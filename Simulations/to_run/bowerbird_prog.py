@@ -418,17 +418,15 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     global RBSB_tau_norm_range
     global damage_to_bower
     global out_title
-#     global mar_ids
-#     global n_mar
-#     global max_maraud
-    
+
     #new
     global num_gens
     global change_what
     global sd_adjust 
     global strat_interval
     global pos_interval
-    global change_what
+    global strat_init
+    global pos_init
 
     # import the parameter file
     myin = imp.load_source(name = "myin", pathname = sys.argv[1]) 
@@ -452,19 +450,16 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     RBSB_tau_std = myin.RBSB_tau_std
     RBSB_tau_norm_range = myin.RBSB_tau_norm_range
     damage_to_bower=myin.damage_to_bower
-#    mar_ids = myin.mar_ids
-#    n_mar = myin.n_mar
-#    max_maraud = myin.max_maraud
-#no longer relevant 
+ 
     
     #new
     num_gens = myin.num_gens
     change_what = myin.change_what
     sd_adjust = myin.sd_adjust
     strat_interval = myin.strat_interval
-    pos_interval = myin.pos_interval
-    male_pos = myin.male_pos
-    male_strat = myin.male_strat
+    pos_interval = myin.pos_interval*dist #this naming is a little misleading but basically it's scaled to dist
+    male_pos = myin.pos_init
+    male_strat = myin.strat_init
 
 
     evolve(t_max, males, F_per_M, females,female_visit_param, dist, bird_speed, improb_sds,improb_dist,FG_tau_mean, FG_tau_std,FG_tau_range, FG_tau_norm_range,FG_k, FG_theta, FG_divisor,RBSB_tau_mean, RBSB_tau_std, RBSB_tau_norm_range, damage_to_bower, male_pos, male_strat, num_gens, change_what, pos_interval, strat_interval, sd_adjust, out_title)

@@ -1,13 +1,13 @@
-import numpy
+import numpy as np
 import math
 from sortedcontainers import SortedDict
 import random
-import numpy 
 import matplotlib.pyplot as plt
 from scipy.stats import truncnorm
 import os
+import sys
 
-def in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_interval):   
+def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, num_sims):   
 #(dist_val, RB_time_val, num_sims, max_m_val, males, n_mar):
     #timeline = SortedDict()
     t_max = 12 * 30 # time when simulation ends
@@ -25,7 +25,7 @@ def in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_i
     female_visit_param = [FV_std, FV_mean, FV_norm_range[0], FV_norm_range[1]]  
 
     # POSITIONS AND TRAVEL TIME
-    dist = dist_val # distance between males
+    dist = males*dist_mult #set dist (circumference, that is)
     bird_speed = 12 * 3600 # m/hr (12 m/s)
     # now choose lambda_dist, controlling the probability of traveling to a neighbor
     # the probability of choosing a neighbor at distance x is proportional to exp(-\lambda x)
@@ -53,18 +53,64 @@ def in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_i
     time_spent_marauding=.1
 
     damage_to_bower = 6 #RB_time_val
-
-    #Male strategies
-    #C_or_D='C' #DO WE CARE????
-
-    #max_maraud=max_m_val
-    #prop_maraud=round(m_prop_val,3) #only useful in discrete case #using round as a precaution because we got weird things last time
-    #mar_ids = 'np.random.permutation(males)[0:n_mar]'
     
-    #DISCRETE: 0, max_maraud
-    #'numpy.random.random(males)*{}'.format(max_maraud) #UNIFORM DISTRIBUTION of strategies capped at max_maraud
-    name_vec=['t_max', 
-              'males', 
+    
+    #THE NEW STUFF (WHICH IS BEING VARIED)
+    
+    #make strat_dict (necessary set-up
+    val_strings = ['Low', 'Med', 'High', 'VHigh'] #these are just set and don't change
+    vals = [.01,.05,.1,.3] #these are just set and don't change
+    strat_dict = dict(zip(val_strings, vals))
+    
+    
+
+    
+    #set strat_init
+    if 'All.' in male_strat:
+        strat_val = strat_dict[male_strat.strip('All.')]
+        strat_init = males*[strat_val]
+    elif 'Alt.' in male_strat:
+        strat_vals = [d[i] for i in male_strat.strip('Alt.').split('.')]
+        strat_init = strat_vals*int(males/int(len(strat_vals)))
+    else:
+        sys.exit("invalid initial strategy input")
+ 
+    #set pos_init
+    if male_pos=='Uniform':
+        pos_init = [male*dist_mult for male in males]
+    elif male_pos=='UniformJittered':
+        pos_init = [male*dist_mult for male in males]
+        #generate males small adjustments
+        np.random.seed(0) #always the same adjustments
+        adj = np.random.uniform(-.05, .05, 12) #12 is what I'm imagining the highest number of males will be
+        #for each one go in and apply them
+        pos_init = pos_init + adj[0:males]*dist_mult #scaled to the size of the ring and # of males
+    elif male_pos=='EvenTenthClumped':
+        pos_init = [male*dist_mult/10 for male in range(males)]
+    elif male_pos=='EvenTenthSpaced':
+        vec=[]
+        for quot in range(int(males/3)):
+            for male in range(3):
+                vec=vec+[dist/3*male+quot*dist/10]
+        pos_init=vec
+    else:
+        sys.exit("Invalid initial position input") 
+
+        
+
+    name_vec=['males',
+              'dist_mult',
+              'change_what',
+              'sd_adjust',
+              'num_gens',
+              'strat_interval',
+              'pos_interval',
+              'male_strat',
+              'strat_init',
+              'male_pos',
+              'pos_init',
+              #old
+              't_max', 
               'F_per_M', 
               'females', 
               'female_visit_param',
@@ -82,13 +128,21 @@ def in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_i
               'RBSB_tau_norm_range',
               'damage_to_bower',
               'time_spent_marauding',
-#               'max_maraud',
-#               'n_mar',
               'improb_dist',
               'improb_sds'
              ]
-    value_vec=[t_max, 
-              males, 
+    value_vec=[males,
+              dist_mult,
+              change_what,
+              sd_adjust,
+              num_gens,
+              strat_interval,
+              pos_interval,
+              male_strat,
+              strat_init,
+              male_pos,
+              pos_init,
+              t_max,  
               F_per_M, 
               females, 
               female_visit_param, 
@@ -106,15 +160,12 @@ def in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_i
               RBSB_tau_norm_range,
               damage_to_bower,
               time_spent_marauding,
-#               max_maraud,
-#               n_mar,
               improb_dist,
               improb_sds
              ]
     in_titles=[]
     out_titles=[]
-    conditions_name='{}_pmar={}_dist={}_repair_{}_males={}_nmar={}'.format(C_or_D,max_maraud,round(dist_val,3),damage_to_bower,males,n_mar)
-    #conditions_name='{}_pmar={}_dist={}_repair_{}_males={}_nmar={}'.format(C_or_D,max_maraud,round(dist_val,3),damage_to_bower,males,n_mar)
+    conditions_name = '{}_{}_sel{}_{}_{}_{}_{}'.format(change_what, eval(change_what + interval), sd_adjust, male_strat, male_pos, dist_mult, males)
     os.makedirs("../to_store/{}".format(conditions_name))
     os.makedirs("../to_store/{}/parameters".format(conditions_name))
     os.makedirs("../to_store/{}/results".format(conditions_name))
@@ -125,8 +176,7 @@ def in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_i
         out_title='res_{}{}'.format(correcter,j) + conditions_name + '.csv'
         out_titles.append(out_title)
         my_string=('random_seed = ' + str(j) + '\n'+
-                   'out_title = ' +  "'" + out_title + "'" + '\n'+
-                   'mar_ids =' + "'" + mar_ids + "'" + '\n')
+                   'out_title = ' +  "'" + out_title + "'" + '\n')
         for i in range(len(name_vec)):
             tack_on= str(name_vec[i]) + ' = ' + str(value_vec[i]) + '\n'
             my_string+=tack_on

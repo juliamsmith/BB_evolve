@@ -11,12 +11,11 @@ if __name__ == "__main__":
 #     dist_mult_vec=[300, 600, 900] # ring circumference is males*dist_mult  i.e. males*100, males*500, males*1000
 #     #I wanted to make it divisible by 3
     
-#     male_strat_vec = [.01, .05, .1, .3] #.054 is what we had in the other simulations
-#     #male_strat_vec = ['AllLow', 'AllMed', 'AllHigh', 'AllVHigh'] #males*[.01], males*[.1], males*[.3], males*[.5] ?
-#     #same 
+#     #male_strat_vec = ['All.Low', 'All.Med', 'All.High', 'All.VHigh', 'Alt.Low.VHigh'] #males*[.01], males*[.05], males*[.1], males*[.3], [.01,.3,.01,.3...], etc. 
+#some possible additions are consecutive marauders or guarders
+
     
     
-#     #for the above two, could make it like male_pos_vec. Right now everything is scaled to males in dist_mult_vec, but if we don't want that, we could have a greater variety of inputs (some can follow scaling rules while some could just be numbers. Also, male_strat_vec doesn't allow different males to start at different values
     
 #     male_pos_vec = ['Uniform', 'UniformJittered', 'EvenTenthClumped', 'EvenTenthSpaced'] 
 #     #'Uniform': evenly spaced across whole circle [male*dist_mult for male in males]
@@ -40,10 +39,10 @@ if __name__ == "__main__":
     
     males_vec = [6]
     dist_mult_vec = [900]
-    male_strat_vec = [.3] #I think this may drive selection more strongly... this whole thing is a bit of a best case scenario for sig
+    male_strat_vec = ['AllVHigh'] #I think this may drive selection more strongly... this whole thing is a bit of a best case scenario for sig
     male_pos_vec = ['EvenTenthClumped']
     change_what_vec = ['pos']
-    pos_interval_vec = [50]
+    pos_interval_vec = [1/10] #now scaled TO THE SIZE OF THE TOTAL ENVIRONMENT
     strat_interval_vec = []
     sd_adjust_vec = [1,0]
     

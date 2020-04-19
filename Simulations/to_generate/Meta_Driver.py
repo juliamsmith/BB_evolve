@@ -5,68 +5,45 @@ import numpy as np
 #from Batch_func import BnS
 
 
-def writebatchscript(num_sims, in_titles, out_titles, conditions_name):
-    script=""
-    for i in range(num_sims): #assume you call from inside to_run
-        script+=("python3 bowerbird_prog.py ../to_store/{}/parameters/{}\n".format(conditions_name,in_titles[i]) + 
-                 "mv {} ../to_store/{}/results/{}\n".format(out_titles[i],conditions_name,out_titles[i]))
-    #make it run on the grid
-    to_submit = ("#!/bin/bash" +
-                 "\n#SBATCH -J " + conditions_name + 
-                 "\n#SBATCH --time=07:00:00" +
-                 "\n#SBATCH -p broadwl" + 
-                 "\n#SBATCH --nodes=1" +
-                 "\n#SBATCH --ntasks-per-node=1" + 
-                 "\n\nmodule load Anaconda3/5.1.0\n" + 
-                 script)
-    return to_submit
+def writebatchscript(num_sims, in_titles, out_titles, conditions_name): #NEED TO GIVE EACH SIM ITS OWN NODE
+    for sim in range(num_sims): #assume you call from inside to_run
+        script=("python3 bowerbird_prog.py ../to_store/{}/parameters/{}\n".format(conditions_name,in_titles[sim]) + 
+                 "mv {} ../to_store/{}/results/{}\n".format(out_titles[sim],conditions_name,out_titles[sim]))
+        #make it run on the grid
+        to_submit = ("#!/bin/bash" +
+                     "\n#SBATCH -J " + conditions_name + sim +
+                     "\n#SBATCH --time=03:00:00" + #think about time
+                     "\n#SBATCH -p broadwl" + 
+                     "\n#SBATCH --nodes=1" +
+                     "\n#SBATCH --ntasks-per-node=1" + 
+                     "\n\nmodule load Anaconda3/5.1.0\n" + 
+                     script)
+    return to_submit #idk if this works! (to_submit is submitting a bunch of different scripts)
 
 
 
 def vary_params(males_vec, dist_mult_vec, male_strat_vec, male_pos_vec, change_what_vec, pos_interval_vec, strat_interval_vec, sd_adjust_vec):
     for males in males_vec: #males
         for dist_mult in dist_mult_vec:
-            dist = males*dist_mult #dist
             for male_strat in male_strat_vec: #consider just calling it strat rather than male_strat
-                strat_init = males*[male_strat] #strat_init (new name -- is it good?)
                 for male_pos in male_pos_vec:
-                    #set pos_init
-                    if male_pos=='Uniform':
-                        pos_init = [male*dist_mult for male in males]
-                    elif male_pos=='UniformJittered':
-                        pos_init = [male*dist_mult for male in males]
-                        #generate males small adjustments
-                        np.random.seed(0) #always the same adjustments
-                        adj = np.random.uniform(-.05, .05, 12) 
-                        #for each one go in and apply them
-                        pos_init = pos_init + adj[0:males]*dist_mult #scaled to the size of the ring and # of males
-                    elif male_pos=='EvenTenthClumped':
-                        pos_init = [male*dist_mult/10 for male in range(males)]
-                    elif male_pos=='EvenTenthSpaced':
-                        vec=[]
-                        for quot in range(int(males/3)):
-                            for male in range(3):
-                                vec=vec+[dist/3*male+quot*dist/10]
-                        male_pos=vec
-                    else:
-                        print("Invalid initial position input") 
-                        break
                     for sd_adjust in sd_adjust_vec:
                         for change_what in change_what_vec:
                             interval_vec = eval(change_what + "interval_vec")
-                            interval_var_name = change_what + "_interval" #it is either pos_interval or strat_interval
-                            strat_interval = [] #so that whichever doesn't get changed has an input; relies on either/or mentality
-                            pos_interval=[]
+                            #interval_var_name = change_what + "_interval" #it is either pos_interval or strat_interval
+#                             strat_interval = [] #so that whichever doesn't get changed has an input; relies on either/or mentality
+#                             pos_interval= [] #no longer necessary I think!
                             for interval in interval_vec:
                                 #set the variable name to interval 
-                                exec(interval_var_name + " = interval") #assigns the value of interval to the correct variable
-                                [in_titles, out_titles, conditions_name] = in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_interval, num_sims)  #the call
-                                script=writebatchscript(num_sims, in_titles, out_titles, conditions_name)
+                                #exec(interval_var_name + " = interval") #assigns the value of interval to the correct variable
+#                                 [in_titles, out_titles, conditions_name] = in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_interval, num_sims)  #the call
+                                [in_titles, out_titles, conditions_name] = in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, num_sims) #thinking probably don't include_num sims(???)
+                                script=writebatchscript(num_sims, in_titles, out_titles, conditions_name) #WILL EDIT THIS FUNC
                                 full_name="../to_run/{}.sh".format(conditions_name) #assumes it's in the to_generate file
                                 with open(full_name,"w") as f:
-                                    f.write(script)
+                                    f.write(script) #afraid this will have it write one big csv... tho actually would that be so bad?
                                #the last few lines were just taken from before -- I didn't think about it yet
-
+                                    #might also write something for nulls here -- so all sims can all be done in one node 
 
                 
             
