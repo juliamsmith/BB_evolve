@@ -1,15 +1,11 @@
 import numpy as np
-import math
-from sortedcontainers import SortedDict
-import random
-import matplotlib.pyplot as plt
+#import math
 from scipy.stats import truncnorm
 import os
 import sys
 
-def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, num_sims):   
-#(dist_val, RB_time_val, num_sims, max_m_val, males, n_mar):
-    #timeline = SortedDict()
+def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, num_sims, num_gens):   
+
     t_max = 12 * 30 # time when simulation ends
 
    
@@ -61,6 +57,13 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
     val_strings = ['Low', 'Med', 'High', 'VHigh'] #these are just set and don't change
     vals = [.01,.05,.1,.3] #these are just set and don't change
     strat_dict = dict(zip(val_strings, vals))
+    
+    #set intervals (both are zero and then one gets overwritten)
+    pos_interval = 0
+    strat_interval = 0
+    interval_var_name = change_what + "_interval" #it is either pos_interval or strat_interval
+    exec(interval_var_name + " = interval") #assigns the value of interval to the correct variable
+    
     
     
 
@@ -165,7 +168,7 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
              ]
     in_titles=[]
     out_titles=[]
-    conditions_name = '{}_{}_sel{}_{}_{}_{}_{}'.format(change_what, eval(change_what + interval), sd_adjust, male_strat, male_pos, dist_mult, males)
+    conditions_name = '{}_{}_sel{}_{}_{}_{}_{}'.format(change_what, interval, sd_adjust, male_strat, male_pos, dist_mult, males)
     os.makedirs("../to_store/{}".format(conditions_name))
     os.makedirs("../to_store/{}/parameters".format(conditions_name))
     os.makedirs("../to_store/{}/results".format(conditions_name))

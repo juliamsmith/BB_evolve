@@ -39,17 +39,14 @@ if __name__ == "__main__":
     
     males_vec = [6]
     dist_mult_vec = [900]
-    male_strat_vec = ['AllVHigh'] #I think this may drive selection more strongly... this whole thing is a bit of a best case scenario for sig
+    male_strat_vec = ['All.VHigh'] #I think this may drive selection more strongly... this whole thing is a bit of a best case scenario for sig
     male_pos_vec = ['EvenTenthClumped']
     change_what_vec = ['pos']
-    pos_interval_vec = [1/10] #now scaled TO THE SIZE OF THE TOTAL ENVIRONMENT
+    pos_interval_vec = [.1] #now scaled TO THE SIZE OF THE TOTAL ENVIRONMENT
     strat_interval_vec = []
     sd_adjust_vec = [1,0]
+    num_sims = 3
+    num_gens = 5
     
-    vary_params(males_vec, dist_mult_vec, male_strat_vec, male_pos_vec, change_what_vec, pos_interval_vec, strat_interval_vec, sd_adjust_vec, num_sims)
+    vary_params(males_vec, dist_mult_vec, male_strat_vec, male_pos_vec, change_what_vec, pos_interval_vec, strat_interval_vec, sd_adjust_vec, num_sims, num_gens)
     
-    
-
-
-         
-          

@@ -5,31 +5,31 @@ import numpy as np
 #from Batch_func import BnS
 
 
-def writebatchscript(num_sims, in_titles, out_titles, conditions_name): #NEED TO GIVE EACH SIM ITS OWN NODE
-    for sim in range(num_sims): #assume you call from inside to_run
-        script=("python3 bowerbird_prog.py ../to_store/{}/parameters/{}\n".format(conditions_name,in_titles[sim]) + 
-                 "mv {} ../to_store/{}/results/{}\n".format(out_titles[sim],conditions_name,out_titles[sim]))
-        #make it run on the grid
-        to_submit = ("#!/bin/bash" +
-                     "\n#SBATCH -J " + conditions_name + sim +
-                     "\n#SBATCH --time=03:00:00" + #think about time
-                     "\n#SBATCH -p broadwl" + 
-                     "\n#SBATCH --nodes=1" +
-                     "\n#SBATCH --ntasks-per-node=1" + 
-                     "\n\nmodule load Anaconda3/5.1.0\n" + 
-                     script)
+def writebatchscript(sim, in_title, out_title, conditions_name): #NEED TO GIVE EACH SIM ITS OWN NODE
+    script=("python3 bowerbird_prog.py ../to_store/{}/parameters/{}\n".format(conditions_name,in_title) + 
+             "mv {} ../to_store/{}/results/{}\n".format(out_title,conditions_name,out_title))
+    #make it run on the grid
+    to_submit = ("#!/bin/bash" +
+                 "\n#SBATCH -J " + str(sim) + conditions_name + 
+                 "\n#SBATCH --time=00:30:00" + #THINK ABOUT TIME
+                 "\n#SBATCH -p broadwl" + 
+                 "\n#SBATCH --nodes=1" +
+                 "\n#SBATCH --ntasks-per-node=1" + 
+                 "\n\nmodule load Anaconda3/5.1.0\n" + 
+                 script)
     return to_submit #idk if this works! (to_submit is submitting a bunch of different scripts)
 
 
 
-def vary_params(males_vec, dist_mult_vec, male_strat_vec, male_pos_vec, change_what_vec, pos_interval_vec, strat_interval_vec, sd_adjust_vec):
+def vary_params(males_vec, dist_mult_vec, male_strat_vec, male_pos_vec, change_what_vec, pos_interval_vec, strat_interval_vec, sd_adjust_vec, num_sims, num_gens):
     for males in males_vec: #males
         for dist_mult in dist_mult_vec:
             for male_strat in male_strat_vec: #consider just calling it strat rather than male_strat
                 for male_pos in male_pos_vec:
                     for sd_adjust in sd_adjust_vec:
                         for change_what in change_what_vec:
-                            interval_vec = eval(change_what + "interval_vec")
+                            interval_vec = eval(change_what + "_interval_vec")
+                            
                             #interval_var_name = change_what + "_interval" #it is either pos_interval or strat_interval
 #                             strat_interval = [] #so that whichever doesn't get changed has an input; relies on either/or mentality
 #                             pos_interval= [] #no longer necessary I think!
@@ -37,13 +37,12 @@ def vary_params(males_vec, dist_mult_vec, male_strat_vec, male_pos_vec, change_w
                                 #set the variable name to interval 
                                 #exec(interval_var_name + " = interval") #assigns the value of interval to the correct variable
 #                                 [in_titles, out_titles, conditions_name] = in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_interval, num_sims)  #the call
-                                [in_titles, out_titles, conditions_name] = in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, num_sims) #thinking probably don't include_num sims(???)
-                                script=writebatchscript(num_sims, in_titles, out_titles, conditions_name) #WILL EDIT THIS FUNC
-                                full_name="../to_run/{}.sh".format(conditions_name) #assumes it's in the to_generate file
-                                with open(full_name,"w") as f:
-                                    f.write(script) #afraid this will have it write one big csv... tho actually would that be so bad?
-                               #the last few lines were just taken from before -- I didn't think about it yet
-                                    #might also write something for nulls here -- so all sims can all be done in one node 
+                                [in_titles, out_titles, conditions_name] = in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, num_sims, num_gens) 
+                                for sim in range(num_sims):
+                                    script=writebatchscript(sim, in_titles[sim], out_titles[sim], conditions_name) #WILL EDIT THIS FUNC
+                                    full_name="../to_run/{}.sh".format(str(sim) + conditions_name) #assumes it's in the to_generate file
+                                    with open(full_name,"w") as f:
+                                        f.write(script) 
 
                 
             
