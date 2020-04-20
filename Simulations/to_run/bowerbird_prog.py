@@ -371,7 +371,7 @@ def evolve(t_max, males, F_per_M, females,female_visit_param, dist, bird_speed, 
     global female_birds
     f = open(out_title, "w+")
     
-    dw = csv.DictWriter(f, dict_keys(['gen', 'id', 'probability_maraud', 'position', 'successful_mating'])) #change labels
+    dw = csv.DictWriter(f, fieldnames=['gen', 'id', 'probability_maraud', 'position', 'successful_mating']) #change labels
     dw.writeheader()
     
     for i in range(num_gens):
@@ -427,6 +427,7 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     global pos_interval
     global strat_init
     global pos_init
+    global out_title
 
     # import the parameter file
     myin = imp.load_source(name = "myin", pathname = sys.argv[1]) 
@@ -460,6 +461,7 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     pos_interval = myin.pos_interval*dist #this naming is a little misleading but basically it's scaled to dist
     male_pos = myin.pos_init
     male_strat = myin.strat_init
+    out_title = myin.out_title
 
 
     evolve(t_max, males, F_per_M, females,female_visit_param, dist, bird_speed, improb_sds,improb_dist,FG_tau_mean, FG_tau_std,FG_tau_range, FG_tau_norm_range,FG_k, FG_theta, FG_divisor,RBSB_tau_mean, RBSB_tau_std, RBSB_tau_norm_range, damage_to_bower, male_pos, male_strat, num_gens, change_what, pos_interval, strat_interval, sd_adjust, out_title)

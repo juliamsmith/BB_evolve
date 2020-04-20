@@ -103,14 +103,14 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
 
     name_vec=['males',
               'dist_mult',
-              'change_what',
+              #'change_what',
               'sd_adjust',
               'num_gens',
               'strat_interval',
               'pos_interval',
-              'male_strat',
+              #'male_strat',
               'strat_init',
-              'male_pos',
+              #'male_pos',
               'pos_init',
               #old
               't_max', 
@@ -136,14 +136,14 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
              ]
     value_vec=[males,
               dist_mult,
-              change_what,
+              #change_what, #we need these to be strings so they require special treatment
               sd_adjust,
               num_gens,
               strat_interval,
               pos_interval,
-              male_strat,
+              #male_strat,
               strat_init,
-              male_pos,
+              #male_pos,
               pos_init,
               t_max,  
               F_per_M, 
@@ -179,7 +179,10 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
         out_title='res_{}{}'.format(correcter,j) + conditions_name + '.csv'
         out_titles.append(out_title)
         my_string=('random_seed = ' + str(j) + '\n'+
-                   'out_title = ' +  "'" + out_title + "'" + '\n')
+                   'out_title = ' +  "'" + out_title + "'" + '\n' + 
+                   'change_what = ' +  "'" + change_what + "'" + '\n' +
+                   'male_strat = ' +  "'" + male_strat + "'" + '\n' +
+                   'male_pos = ' +  "'" + male_pos + "'" + '\n')
         for i in range(len(name_vec)):
             tack_on= str(name_vec[i]) + ' = ' + str(value_vec[i]) + '\n'
             my_string+=tack_on
