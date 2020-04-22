@@ -168,18 +168,23 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
              ]
     in_titles=[]
     out_titles=[]
+    null_out_titles=[]
     conditions_name = '{}_{}_sel{}_{}_{}_{}_{}'.format(change_what, interval, sd_adjust, male_strat, male_pos, dist_mult, males)
     os.makedirs("../to_store/{}".format(conditions_name))
     os.makedirs("../to_store/{}/parameters".format(conditions_name))
     os.makedirs("../to_store/{}/results".format(conditions_name))
+    os.makedirs("../to_store/{}/nulls".format(conditions_name))
     for j in range(num_sims):
         correcter=''
         if j<10:
             correcter='0'
-        out_title='res_{}{}'.format(correcter,j) + conditions_name + '.csv'
+        out_title='res_{}{}_'.format(correcter,j) + conditions_name + '.csv'
         out_titles.append(out_title)
+        null_out_title='null_{}{}_'.format(correcter,j) + conditions_name + '.csv'
+        null_out_titles.append(null_out_title)
         my_string=('random_seed = ' + str(j) + '\n'+
                    'out_title = ' +  "'" + out_title + "'" + '\n' + 
+                   'null_out_title = ' +  "'" + null_out_title + "'" + '\n' + 
                    'change_what = ' +  "'" + change_what + "'" + '\n' +
                    'male_strat = ' +  "'" + male_strat + "'" + '\n' +
                    'male_pos = ' +  "'" + male_pos + "'" + '\n')
@@ -190,4 +195,4 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
         in_titles.append(in_title)
         with open("../to_store/{}/parameters/{}".format(conditions_name, in_title),"w") as f:
             f.write(my_string)
-    return [in_titles, out_titles, conditions_name]
+    return [in_titles, out_titles, null_out_titles, conditions_name]

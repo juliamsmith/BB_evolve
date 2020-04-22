@@ -6,7 +6,8 @@ from scipy.stats import truncnorm
 import csv
 import sys
 import copy
-import imp
+from importlib.machinery import SourceFileLoader
+#import importlib as imp
 from scipy.stats import norm
 import scipy.special as ss
 
@@ -429,8 +430,12 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     global pos_init
     global out_title
 
+    
+
+#mymodule = SourceFileLoader('modname', '/path/to/file.py').load_module()
+    
     # import the parameter file
-    myin = imp.load_source(name = "myin", pathname = sys.argv[1]) 
+    myin = SourceFileLoader("myin", sys.argv[1]).load_module() 
     t_max = myin.t_max 
     males = myin.males
     F_per_M = myin.F_per_M #probably don't need both F_per_M and females (may change in the future)

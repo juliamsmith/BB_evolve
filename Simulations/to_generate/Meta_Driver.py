@@ -14,8 +14,23 @@ def writebatchscript(sim, in_title, out_title, conditions_name): #NEED TO GIVE E
                  "\n#SBATCH --time=00:30:00" + #THINK ABOUT TIME
                  "\n#SBATCH -p broadwl" + 
                  "\n#SBATCH --nodes=1" +
-                 "\n#SBATCH --ntasks-per-node=1" + 
-                 "\n\nmodule load Anaconda3/5.1.0\n" + 
+                 "\n#SBATCH --ntasks-per-node=1\n" + 
+                 script)
+    return to_submit 
+
+
+def writenullscript(num_sims, in_titles, null_out_titles, conditions_name): #NEED TO GIVE EACH SIM ITS OWN NODE
+    script = ""
+    for sim in range(num_sims):
+        script+=("python3 null_bowerbird_prog.py ../to_store/{}/parameters/{}\n".format(conditions_name,in_titles[sim]) + 
+                 "mv {} ../to_store/{}/nulls/{}\n".format(null_out_titles[sim],conditions_name,null_out_titles[sim]))
+    #make it run on the grid
+    to_submit = ("#!/bin/bash" +
+                 "\n#SBATCH -J " + "nulls_" + conditions_name + 
+                 "\n#SBATCH --time=00:30:00" + #THINK ABOUT TIME
+                 "\n#SBATCH -p broadwl" + 
+                 "\n#SBATCH --nodes=1" +
+                 "\n#SBATCH --ntasks-per-node=1\n" + 
                  script)
     return to_submit #idk if this works! (to_submit is submitting a bunch of different scripts)
 
@@ -37,13 +52,16 @@ def vary_params(males_vec, dist_mult_vec, male_strat_vec, male_pos_vec, change_w
                                 #set the variable name to interval 
                                 #exec(interval_var_name + " = interval") #assigns the value of interval to the correct variable
 #                                 [in_titles, out_titles, conditions_name] = in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_interval, num_sims)  #the call
-                                [in_titles, out_titles, conditions_name] = in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, num_sims, num_gens) 
+                                [in_titles, out_titles, null_out_titles, conditions_name] = in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, num_sims, num_gens) 
                                 for sim in range(num_sims):
                                     script=writebatchscript(sim, in_titles[sim], out_titles[sim], conditions_name) #WILL EDIT THIS FUNC
-                                    full_name="../to_run/{}.sh".format(str(sim) + conditions_name) #assumes it's in the to_generate file
+                                    full_name="../to_run/{}.sh".format(str(sim) + '_' + conditions_name) #assumes it's in the to_generate file
                                     with open(full_name,"w") as f:
                                         f.write(script) 
-
+                                null_script=writenullscript(num_sims, in_titles, null_out_titles, conditions_name)
+                                full_name="../to_run/{}.sh".format('null_' + conditions_name) #assumes it's in the to_generate file
+                                with open(full_name,"w") as f:
+                                    f.write(null_script) 
                 
             
     
