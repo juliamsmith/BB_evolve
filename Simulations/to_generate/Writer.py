@@ -4,7 +4,7 @@ from scipy.stats import truncnorm
 import os
 import sys
 
-def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, num_sims, num_gens):   
+def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, sims, num_gens):   
 
     t_max = 12 * 30 # time when simulation ends
 
@@ -61,9 +61,13 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
     #set intervals (both are zero and then one gets overwritten)
     pos_interval = 0
     strat_interval = 0
-    interval_var_name = change_what + "_interval" #it is either pos_interval or strat_interval
-    exec(interval_var_name + " = interval") #assigns the value of interval to the correct variable
-    
+    #for some reason, these two lines didn't work, so I'm going the "if" route
+#     interval_var_name = change_what + "_interval" #it is either pos_interval or strat_interval
+#     exec(interval_var_name + " = interval") #assigns the value of interval to the correct variable
+    if change_what=="pos":
+        pos_interval = interval
+    elif change_what=="strat":
+        strat_interval = interval
     
     
 
@@ -174,15 +178,15 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
     os.makedirs("../to_store/{}/parameters".format(conditions_name))
     os.makedirs("../to_store/{}/results".format(conditions_name))
     os.makedirs("../to_store/{}/nulls".format(conditions_name))
-    for j in range(num_sims):
+    for sim in sims:
         correcter=''
-        if j<10:
+        if sim<10:
             correcter='0'
-        out_title='res_{}{}_'.format(correcter,j) + conditions_name + '.csv'
+        out_title='res_{}{}_'.format(correcter,sim) + conditions_name + '.csv'
         out_titles.append(out_title)
-        null_out_title='null_{}{}_'.format(correcter,j) + conditions_name + '.csv'
+        null_out_title='null_{}{}_'.format(correcter,sim) + conditions_name + '.csv'
         null_out_titles.append(null_out_title)
-        my_string=('random_seed = ' + str(j) + '\n'+
+        my_string=('random_seed = ' + str(sim) + '\n'+
                    'out_title = ' +  "'" + out_title + "'" + '\n' + 
                    'null_out_title = ' +  "'" + null_out_title + "'" + '\n' + 
                    'change_what = ' +  "'" + change_what + "'" + '\n' +
@@ -191,7 +195,7 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
         for i in range(len(name_vec)):
             tack_on= str(name_vec[i]) + ' = ' + str(value_vec[i]) + '\n'
             my_string+=tack_on
-        in_title='in_{}{}'.format(correcter,j) + conditions_name
+        in_title='in_{}{}'.format(correcter,sim) + conditions_name
         in_titles.append(in_title)
         with open("../to_store/{}/parameters/{}".format(conditions_name, in_title),"w") as f:
             f.write(my_string)

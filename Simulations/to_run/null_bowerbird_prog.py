@@ -1,12 +1,11 @@
 import numpy as np
 import math
 from sortedcontainers import SortedDict
-import random
+#import random
 from scipy.stats import truncnorm
 import csv
 import sys
 import copy
-#import importlib as imp
 from importlib.machinery import SourceFileLoader
 from scipy.stats import norm
 import scipy.special as ss
@@ -51,11 +50,11 @@ def null_evolve(males, females, dist, male_pos, male_strat, num_gens, change_wha
     w = csv.writer(f) #change labels
     w.writerow(['gen', 'id', 'probability_maraud', 'position', 'successful_mating']) #headers
     for gen in range(num_gens):
-        female_choices = random.choices(range(males), k=females)
+        female_choices = list(np.random.choice(males, females))
         matings = [female_choices.count(x) for x in range(males)]
         rows=zip([gen]*males,range(males), male_strat, male_pos, matings)
         w.writerows(rows)
-        underperformer_ids = list(np.squeeze(np.argwhere(np.asarray(matings)<9)))
+        underperformer_ids = list(np.squeeze(np.argwhere(np.asarray(matings)<9), axis=1))
         sd=np.std(matings)
         sd_below=1
         for up_id in underperformer_ids:
@@ -88,10 +87,10 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     global strat_init
     global pos_init
     global null_out_title
+    global random_seed
 
     # import the parameter file
     myin = SourceFileLoader("myin", sys.argv[1]).load_module() 
-    #myin = imp.load_source(name = "myin", pathname = sys.argv[1]) 
     males = myin.males
     females = myin.females
     dist = myin.dist
@@ -106,8 +105,9 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     male_pos = myin.pos_init
     male_strat = myin.strat_init
     null_out_title = myin.null_out_title
+    random_seed = myin.random_seed
 
-
+    np.random.seed(random_seed)    
     null_evolve(males, females, dist, male_pos, male_strat, num_gens, change_what, pos_interval, strat_interval, sd_adjust, null_out_title)
 
 

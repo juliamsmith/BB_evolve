@@ -1,13 +1,12 @@
 import numpy as np
 import math
 from sortedcontainers import SortedDict
-import random
+#import random
 from scipy.stats import truncnorm
 import csv
 import sys
 import copy
 from importlib.machinery import SourceFileLoader
-#import importlib as imp
 from scipy.stats import norm
 import scipy.special as ss
 
@@ -370,6 +369,7 @@ def evolve(t_max, males, F_per_M, females,female_visit_param, dist, bird_speed, 
     global birds
     global timeline
     global female_birds
+
     f = open(out_title, "w+")
     
     dw = csv.DictWriter(f, fieldnames=['gen', 'id', 'probability_maraud', 'position', 'successful_mating']) #change labels
@@ -429,6 +429,7 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     global strat_init
     global pos_init
     global out_title
+    global random_seed
 
     
 
@@ -467,8 +468,9 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     male_pos = myin.pos_init
     male_strat = myin.strat_init
     out_title = myin.out_title
+    random_seed = myin.random_seed
 
-
+    np.random.seed(random_seed)    
     evolve(t_max, males, F_per_M, females,female_visit_param, dist, bird_speed, improb_sds,improb_dist,FG_tau_mean, FG_tau_std,FG_tau_range, FG_tau_norm_range,FG_k, FG_theta, FG_divisor,RBSB_tau_mean, RBSB_tau_std, RBSB_tau_norm_range, damage_to_bower, male_pos, male_strat, num_gens, change_what, pos_interval, strat_interval, sd_adjust, out_title)
 
 
