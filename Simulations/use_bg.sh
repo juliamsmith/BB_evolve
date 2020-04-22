@@ -1,8 +1,9 @@
 #!/bin/bash
-print("BACKGROUND RUNS STARTED")
+printf "BACKGROUND RUNS STARTED\n"
 cd to_run
 for f in *.sh; do
     ./$f &
-    print(".")
+    printf "."
 done
-print("BACKGROUND RUNS COMPLETE!")
+printf "/n"
+printf "BACKGROUND RUNS COMPLETE!"

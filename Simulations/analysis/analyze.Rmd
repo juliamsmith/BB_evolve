@@ -1,0 +1,104 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+conditions <- list.files("../to_store/")
+
+```
+
+
+```{r}
+lookup_table <- data.frame()
+for (my_condition in conditions){
+  # split the string
+  my_split <- strsplit(my_condition, "_")[[1]] #|\\=
+  # extract parameters
+  change_what <- my_split[1]
+  pos_interval <- NA
+  strat_interval <- NA
+  assign(paste0(change_what, "_interval"), as.numeric(my_split[2]))
+  is_scaled <- my_split[3]
+  init_strat <- my_split[4]
+  init_pos <- my_split[5]
+  male_dist <- as.numeric(my_split[6])
+  num_males <- as.numeric(my_split[7])
+  
+
+  lookup_table <- rbind(lookup_table, 
+                        data.frame(directory=my_condition,
+                                   change_what=change_what,
+                                   pos_interval=pos_interval,
+                                   strat_interval=strat_interval,
+                                   is_scaled=is_scaled,
+                                   init_strat=init_strat,
+                                   init_pos=init_pos,
+                                   male_dist=male_dist,
+                                   num_males=num_males))
+}
+```
+
+```{r}
+all_results <- tibble()
+for (my_condition in conditions){
+  # read and load each result
+  my_dir_results <- paste0("../to_store/", my_condition, "/results/")
+ my_results <- list.files(my_dir_results)
+ if (length(my_results) > 0){
+   # process a single file
+   for (my_file in my_results) {
+     my_rnd_seed <- as.numeric(strsplit(my_file, "_")[[1]][2])
+     tmp <- read_csv(paste0(my_dir_results, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=1)
+
+     all_results <- rbind(all_results, tmp)
+   }
+ }
+}
+
+for (my_condition in conditions){
+  # read and load each result
+  my_dir_nulls <- paste0("../to_store/", my_condition, "/nulls/")
+ my_nulls <- list.files(my_dir_nulls)
+ if (length(my_nulls) > 0){
+   # process a single file
+   for (my_file in my_nulls) {
+     my_rnd_seed <- as.numeric(strsplit(my_file, "_")[[1]][2])
+     tmp <- read_csv(paste0(my_dir_nulls, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=0)
+
+     all_results <- rbind(all_results, tmp)
+   }
+ }
+}
+
+all_results <- all_results %>% inner_join(lookup_table)
+```
+```{r}
+#ideas: var in interbower distance over time, var in matings over time
+
+```
+
+
+
+```{r}
+mvovergen <- all_results %>% group_by(rnd_seed,gen,directory, is_selection) %>% summarise(mate_var=var(successful_mating))
+```
+
+
+```{r}
+scaled = mvovergen %>% filter(directory=='pos_0.1_1_All.VHigh_EvenTenthClumped_900_6')
+```
+
+
+
+```{r}
+pl <- ggplot(data = scaled) + aes(x = gen, y = mate_var, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2)
+pl
+
+#this is unsurprising and doesn't really tell us much. 
+#keeping this just for the demo
+#remember that as of now the matings don't indicate anything
+#in order to use variance in matings as a proxy for things settling down / equilibrium, I'd have to actually run the mating season simulations in null (and then do the random choice thing to determine who makes adjustments). Then I'd expect the variance in mating to go down for is_selection=1 and stay the same for the null 
+```
+

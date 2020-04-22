@@ -173,7 +173,7 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
     in_titles=[]
     out_titles=[]
     null_out_titles=[]
-    conditions_name = '{}_{}_sel{}_{}_{}_{}_{}'.format(change_what, interval, sd_adjust, male_strat, male_pos, dist_mult, males)
+    conditions_name = '{}_{}_{}_{}_{}_{}_{}'.format(change_what, interval, sd_adjust, male_strat, male_pos, dist_mult, males)
     os.makedirs("../to_store/{}".format(conditions_name))
     os.makedirs("../to_store/{}/parameters".format(conditions_name))
     os.makedirs("../to_store/{}/results".format(conditions_name))
@@ -195,7 +195,7 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
         for i in range(len(name_vec)):
             tack_on= str(name_vec[i]) + ' = ' + str(value_vec[i]) + '\n'
             my_string+=tack_on
-        in_title='in_{}{}'.format(correcter,sim) + conditions_name
+        in_title='in_{}{}'.format(correcter,sim) + conditions_name + '.csv'
         in_titles.append(in_title)
         with open("../to_store/{}/parameters/{}".format(conditions_name, in_title),"w") as f:
             f.write(my_string)
