@@ -93,12 +93,54 @@ scaled = mvovergen %>% filter(directory=='pos_0.1_1_All.VHigh_EvenTenthClumped_9
 
 
 ```{r}
-pl <- ggplot(data = scaled) + aes(x = gen, y = mate_var, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2)
+pl <- ggplot(data = scaled%>% filter(gen<10)) + aes(x = gen, y = mate_var, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2)
 pl
 
-#this is unsurprising and doesn't really tell us much. 
-#keeping this just for the demo
-#remember that as of now the matings don't indicate anything
-#in order to use variance in matings as a proxy for things settling down / equilibrium, I'd have to actually run the mating season simulations in null (and then do the random choice thing to determine who makes adjustments). Then I'd expect the variance in mating to go down for is_selection=1 and stay the same for the null 
+#now the matings are a result
+```
+
+```{r}
+pl <- ggplot(data = scaled%>%filter(is_selection==1)) + aes(x = gen, y = mate_var, alpha=.2) + geom_point()# , color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2)
+pl
+
+```
+```{r}
+
+dat <-scaled%>%filter(is_selection==1)
+model<-lm(mate_var~gen,data = dat) #is there an error here?
+summary(model)
+
+
+#significantly negative slope -- mating success variance is going down with generations *slightly*
+
+#but does this tell us anything on it's own? I think we need to know if this slope is significantly different from the slope of for the null (once we fix the mating success). In both, we expect the birds to be spreading out regardless and that could be causing it
+
+#also, the relationship probably something more like a saturation curve. It's not going to be a line.
+
+```
+```{r}
+strat_scaled = mvovergen %>% filter(directory=='strat_0.75_1_All.High_UniformJittered_900_6')
+#this was a real quick example: 2 simulations, 100 gens
+```
+
+```{r}
+pl <- ggplot(data = strat_scaled) + aes(x = gen, y = mate_var, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2)
+pl
+
+#is_selection 0 and 1 potentially look the same
+#but really we need more than 2 simulations
+```
+
+```{r}
+stratovergen <- all_results %>% group_by(rnd_seed,gen,directory, is_selection) %>% summarise(avg_strat=mean(probability_maraud)) %>% filter(directory=='strat_0.75_1_All.High_UniformJittered_900_6')
+
+```
+
+```{r}
+pl <- ggplot(data = stratovergen) + aes(x = gen, y = avg_strat, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2)
+pl
+
+#same story as before
+
 ```
 

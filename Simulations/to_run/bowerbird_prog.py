@@ -17,8 +17,8 @@ def compute_distances_travel_times(males, positions, bird_speed, dist):
     travel_times = np.zeros((males, males))
     for i in range(males):
         for j in range(i + 1, males):
-            diff = abs(positions[i]-positions[j])
-            ib_dist = min(diff, dist-diff)#math.sqrt((positions[0][j] - positions[0][i]) ** 2 + (positions[1][j] - positions[1][i]) ** 2)
+            diff = abs(positions[i]-positions[j]) 
+            ib_dist = min(diff, dist-diff)
             travel = ib_dist / bird_speed
             male_dist[j][i] = ib_dist
             male_dist[i][j] = ib_dist
@@ -233,6 +233,7 @@ def choose_action(bird, current_time):
             # stay at bower
             action_stay_at_bower(bird["id"], current_time)
 
+#GET RID OF TIME SPENT DOING ACTIVITIES!!!!!! FOR FASTER RUNTIME
 def initialize_male(bird_id, bird_strategy, bird_pos, bird_preferences, bird_travel_times):
     # initialize dictionary
     bird = {"id": bird_id,
@@ -335,7 +336,7 @@ def runsimulation(t_max, males, F_per_M, females,female_visit_param, dist, bird_
 def adjust_pos(pos, dist, pos_interval, sd_below):
     rnd = np.random.uniform(-pos_interval,pos_interval)
     rnd_sd = sd_below*rnd
-    new_pos = (rnd_sd + pos)%dist #TEST IT!
+    new_pos = (rnd_sd + pos)%dist #adjusts so that it falls in the range 0-dist
     return new_pos
 
 
@@ -375,15 +376,15 @@ def evolve(t_max, males, F_per_M, females,female_visit_param, dist, bird_speed, 
     dw = csv.DictWriter(f, fieldnames=['gen', 'id', 'probability_maraud', 'position', 'successful_mating']) #change labels
     dw.writeheader()
     
-    for i in range(num_gens):
+    for gen in range(num_gens):
         birds = runsimulation(t_max, males, F_per_M, females,female_visit_param, dist, bird_speed, improb_sds,improb_dist,FG_tau_mean, FG_tau_std,FG_tau_range, FG_tau_norm_range,FG_k, FG_theta, FG_divisor,RBSB_tau_mean, RBSB_tau_std, RBSB_tau_norm_range, damage_to_bower, male_pos, male_strat)
         for bird in birds:
-            dw.writerow(clean_bird_for_output(bird, i))
+            dw.writerow(clean_bird_for_output(bird, gen))
         underperformer_ids = [bird["id"] for bird in birds if bird["successful_mating"] < 9]
-        sd=np.std([bird["successful_mating"] for bird in birds])
         sd_below=1
         for up_id in underperformer_ids:
             if sd_adjust==1:
+                sd=np.std([bird["successful_mating"] for bird in birds])
                 sd_below=(9-birds[up_id]["successful_mating"])/sd #could re-write code to allow degree of adjustment based on sd below to vary
             if change_what == "pos":
                 male_pos[up_id]=adjust_pos(birds[up_id]["position"], dist, pos_interval, sd_below)
@@ -418,7 +419,6 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     global RBSB_tau_std 
     global RBSB_tau_norm_range
     global damage_to_bower
-    global out_title
 
     #new
     global num_gens
@@ -465,8 +465,8 @@ if __name__ == "__main__": # special line: code to execute when you call this  p
     sd_adjust = myin.sd_adjust
     strat_interval = myin.strat_interval
     pos_interval = myin.pos_interval*dist #this naming is a little misleading but basically it's scaled to dist
-    male_pos = myin.pos_init
-    male_strat = myin.strat_init
+    male_pos = myin.pos_init #this is a vector of length males (myin.male_pos is a string)
+    male_strat = myin.strat_init #same as above comment
     out_title = myin.out_title
     random_seed = myin.random_seed
 

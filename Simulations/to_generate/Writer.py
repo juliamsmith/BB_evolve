@@ -84,14 +84,14 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
  
     #set pos_init
     if male_pos=='Uniform':
-        pos_init = [male*dist_mult for male in males]
+        pos_init = [male*dist_mult for male in range(males)]
     elif male_pos=='UniformJittered':
-        pos_init = [male*dist_mult for male in males]
+        pos_init = [male*dist_mult for male in range(males)]
         #generate males small adjustments
         np.random.seed(0) #always the same adjustments
         adj = np.random.uniform(-.05, .05, 12) #12 is what I'm imagining the highest number of males will be
         #for each one go in and apply them
-        pos_init = pos_init + adj[0:males]*dist_mult #scaled to the size of the ring and # of males
+        pos_init = list(pos_init + adj[0:males]*dist_mult) #scaled to the size of the ring and # of males
     elif male_pos=='EvenTenthClumped':
         pos_init = [male*dist_mult/10 for male in range(males)]
     elif male_pos=='EvenTenthSpaced':
@@ -195,7 +195,7 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
         for i in range(len(name_vec)):
             tack_on= str(name_vec[i]) + ' = ' + str(value_vec[i]) + '\n'
             my_string+=tack_on
-        in_title='in_{}{}'.format(correcter,sim) + conditions_name + '.csv'
+        in_title='in_{}{}_'.format(correcter,sim) + conditions_name + '.csv'
         in_titles.append(in_title)
         with open("../to_store/{}/parameters/{}".format(conditions_name, in_title),"w") as f:
             f.write(my_string)
