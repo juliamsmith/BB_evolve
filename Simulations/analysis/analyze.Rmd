@@ -144,3 +144,75 @@ pl
 
 ```
 
+```{r}
+library(tidyverse)
+conditions <- list.files("../to_store/")[3:6]
+
+#list.files("../to_run/incomplete_results/")
+```
+
+```{r}
+lookup_table <- data.frame()
+for (my_condition in conditions){
+  # split the string
+  my_split <- strsplit(my_condition, "_")[[1]] #|\\=
+  # extract parameters
+  change_what <- my_split[1]
+  pos_interval <- NA
+  strat_interval <- NA
+  assign(paste0(change_what, "_interval"), as.numeric(my_split[2]))
+  is_scaled <- my_split[3]
+  init_strat <- my_split[4]
+  init_pos <- my_split[5]
+  male_dist <- as.numeric(my_split[6])
+  num_males <- as.numeric(my_split[7])
+  
+
+  lookup_table <- rbind(lookup_table, 
+                        data.frame(directory=my_condition,
+                                   change_what=change_what,
+                                   pos_interval=pos_interval,
+                                   strat_interval=strat_interval,
+                                   is_scaled=is_scaled,
+                                   init_strat=init_strat,
+                                   init_pos=init_pos,
+                                   male_dist=male_dist,
+                                   num_males=num_males))
+}
+```
+
+```{r}
+all_results <- tibble()
+my_dir_results <- "../to_run/incomplete_results/"
+my_results <- list.files("../to_run/incomplete_results/")
+count=1
+for (my_file in my_results) {
+  my_condition <- str_remove(str_remove(str_remove(my_file, "null_.._"), "res_.._"), ".csv")
+  my_rnd_seed <- as.numeric(strsplit(my_file, "_")[[1]][2])
+  tmp <- read_csv(paste0(my_dir_results, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=(count>30))
+  all_results <- rbind(all_results, tmp)
+  count <-count+1
+}
+all_results <- all_results %>% inner_join(lookup_table) 
+all_results2 <- all_results %>% filter(gen<750) #different lengths, so we're putting them all at the same length
+
+```
+```{r}
+stratovergen <- all_results2 %>% group_by(rnd_seed,gen, male_dist, is_selection) %>% summarise(avg_strat=mean(probability_maraud))
+```
+
+
+```{r}
+model1 <- glm(avg_strat ~ gen + is_selection + male_dist, # one sex as baseline, the other modifies intercept
+              data = stratovergen,
+              family = "binomial")
+summary(model1)
+
+```
+```{r}
+model2 <- glm(avg_strat ~ gen * is_selection * male_dist, 
+              data = stratovergen,
+              family = "binomial")
+summary(model2)
+
+```
