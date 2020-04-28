@@ -42,7 +42,7 @@ if __name__ == "__main__":
 #     num_gens = 2000
     males_vec = [6]
     dist_mult_vec = [300]
-    male_strat_vec = ['Alt.Low.VHigh'] #I think this may drive selection more strongly... this whole thing is a bit of a best case scenario for sig
+    male_strat_vec = ['All.Med'] #I think this may drive selection more strongly... this whole thing is a bit of a best case scenario for sig
     male_pos_vec = ['Uniform']
     change_what_vec = ['strat']
     pos_interval_vec = [] #now scaled TO THE SIZE OF THE TOTAL ENVIRONMENT
