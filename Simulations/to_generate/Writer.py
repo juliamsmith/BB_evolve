@@ -77,7 +77,7 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
         strat_val = strat_dict[male_strat.strip('All.')]
         strat_init = males*[strat_val]
     elif 'Alt.' in male_strat:
-        strat_vals = [d[i] for i in male_strat.strip('Alt.').split('.')]
+        strat_vals = [strat_dict[i] for i in male_strat.strip('Alt.').split('.')]
         strat_init = strat_vals*int(males/int(len(strat_vals)))
     else:
         sys.exit("invalid initial strategy input")

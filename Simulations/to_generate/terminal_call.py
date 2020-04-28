@@ -30,26 +30,18 @@ if __name__ == "__main__":
         
 #ADJUST    
     
-#     males_vec = [6,12]
-#     dist_mult_vec = [300, 600, 900]
-#     male_strat_vec = ['Alt.Low.VHigh'] #I think this may drive selection more strongly... this whole thing is a bit of a best case scenario for sig
-#     male_pos_vec = ['Uniform']
-#     change_what_vec = ['strat']
-#     pos_interval_vec = [] #now scaled TO THE SIZE OF THE TOTAL ENVIRONMENT
-#     strat_interval_vec = [.75]
-#     sd_adjust_vec = [0,1]
-#     sims = range(10)
-#     num_gens = 2000
-    males_vec = [6]
-    dist_mult_vec = [300]
-    male_strat_vec = ['All.Med'] #I think this may drive selection more strongly... this whole thing is a bit of a best case scenario for sig
+    males_vec = [6,12]
+    dist_mult_vec = [300, 600, 900]
+    male_strat_vec = ['Alt.Low.VHigh']
     male_pos_vec = ['Uniform']
     change_what_vec = ['strat']
     pos_interval_vec = [] #now scaled TO THE SIZE OF THE TOTAL ENVIRONMENT
     strat_interval_vec = [.75]
-    sd_adjust_vec = [1]
-    sims = range(2)
-    num_gens = 10
+    sd_adjust_vec = [0,1]
+    sims = range(10)
+    num_gens = 2000
+
+
     
     vary_params(males_vec, dist_mult_vec, male_strat_vec, male_pos_vec, change_what_vec, pos_interval_vec, strat_interval_vec, sd_adjust_vec, sims, num_gens)
     

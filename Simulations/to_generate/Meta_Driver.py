@@ -7,29 +7,37 @@ import numpy as np
 
 def writebatchscript(sim, in_title, out_title, conditions_name): #NEED TO GIVE EACH SIM ITS OWN NODE
     script=("python3 bowerbird_prog.py ../to_store/{}/parameters/{}\n".format(conditions_name,in_title) + 
-             "mv {} ../to_store/{}/results/{}\n".format(out_title,conditions_name,out_title))
+             "mv {} ../to_store/{}/results/{}".format(out_title,conditions_name,out_title))
     #make it run on the grid
     to_submit = ("#!/bin/bash" +
-                 "\n#SBATCH -J " + str(sim) + conditions_name + 
+                 "\n#SBATCH -J " + str(sim) + "res" + conditions_name + 
                  "\n#SBATCH --time=00:30:00" + #THINK ABOUT TIME
                  "\n#SBATCH -p broadwl" + 
                  "\n#SBATCH --nodes=1" +
-                 "\n#SBATCH --ntasks-per-node=1\n" + 
-                 script)
+                 "\n#SBATCH --ntasks-per-node=1" + 
+                 "\nprintf '" + str(sim) + " res " + conditions_name + " start '" +
+                 "\ndate" + "\n" +
+                 script +
+                "\nprintf '" + str(sim) + " res " + conditions_name + " finish '" +
+                "\ndate" + "\n")
     return to_submit 
 
 
 def writenullscript(sim, in_title, null_out_title, conditions_name): #NEED TO GIVE EACH SIM ITS OWN NODE
     script=("python3 null_bowerbird_prog.py ../to_store/{}/parameters/{}\n".format(conditions_name,in_title) + 
-             "mv {} ../to_store/{}/nulls/{}\n".format(null_out_title,conditions_name,null_out_title))
+             "mv {} ../to_store/{}/nulls/{}".format(null_out_title,conditions_name,null_out_title))
     #make it run on the grid
     to_submit = ("#!/bin/bash" +
-                 "\n#SBATCH -J " + str(sim) + conditions_name + 
+                 "\n#SBATCH -J " + str(sim) + "null" + conditions_name + 
                  "\n#SBATCH --time=00:30:00" + #THINK ABOUT TIME
                  "\n#SBATCH -p broadwl" + 
                  "\n#SBATCH --nodes=1" +
-                 "\n#SBATCH --ntasks-per-node=1\n" + 
-                 script)
+                 "\n#SBATCH --ntasks-per-node=1" + 
+                 "\nprintf '" + str(sim) + " null " + conditions_name + " start '" +
+                 "\ndate" + "\n" +
+                 script +
+                "\nprintf '" + str(sim) + " null " + conditions_name + " finish '" +
+                "\ndate" + "\n")
     return to_submit 
 
 
