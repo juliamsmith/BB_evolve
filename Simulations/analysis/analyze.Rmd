@@ -5,7 +5,7 @@ output: html_notebook
 
 ```{r}
 library(tidyverse)
-conditions <- list.files("../to_store/")
+conditions <- list.files("../to_store/")[1:2]
 
 ```
 
@@ -82,7 +82,62 @@ all_results <- all_results %>% inner_join(lookup_table)
 
 
 ```{r}
-mvovergen <- all_results %>% group_by(rnd_seed,gen,directory, is_selection) %>% summarise(mate_var=var(successful_mating))
+mvovergen <- all_results %>% group_by(rnd_seed,gen,directory, is_selection, is_scaled) %>% summarise(mate_var=var(successful_mating))
+```
+
+```{r}
+wrap <- function(vec, interval){
+  return(c(vec[(length(vec)+1-interval):length(vec)],
+           lag(vec, interval)[-(1:interval)]))
+}
+
+posvarovergen <- all_results %>% group_by(rnd_seed,gen,directory, is_selection, is_scaled) %>%
+ mutate(distfrom0=abs(position-wrap(position,1))) %>%
+mutate(distfrom1=abs(position-wrap(position,2))) %>%
+mutate(distfrom2=abs(position-wrap(position,3))) %>%
+mutate(distfrom3=abs(position-wrap(position,4))) %>%
+mutate(distfrom4=abs(position-wrap(position,5))) %>% summarise(var=var(c(distfrom0,distfrom1,distfrom2,distfrom3, distfrom4)))
+#we don't divide by the mean here bc it (male_dist) doesn't vary
+
+
+```
+
+
+
+
+```{r}
+modpos <- lm(var ~ is_selection+is_scaled,
+              data = filter(posvarovergen, gen==749))
+summary(modpos)
+
+#so it's not driving dispersion (hmmmm)
+```
+```{r}
+pl <- ggplot(data = posvarovergen) + aes(x = gen, y = var, color = as.factor(is_selection)) + geom_line( alpha=.2)+ stat_smooth() + facet_wrap(~is_scaled)
+pl
+
+
+#MAYBE THERE'S A BETTER MEASURE!!! LIKE HOW MANY ARE IN A 6th of a circle
+```
+
+
+```{r}
+mod <- lm(mate_var ~ is_selection+is_scaled,
+              data = filter(mvovergen, gen==1999))
+summary(mod)
+#interesting -- perhaps it doesn't affect mate_var significantly in turn
+```
+
+```{r}
+newmvovg <- mvovergen %>% filter(gen==1999) %>% group_by(is_selection, is_scaled) %>% summarise(a_mv=mean(mate_var)) %>% ungroup() %>% select(a_mv, is_selection, is_scaled) %>% distinct()
+```
+
+```{r}
+mod2 <- lm(a_mv ~ is_selection+is_scaled,
+              data = newmvovg)
+summary(mod2)
+
+#note -- still not significant
 ```
 
 
@@ -104,6 +159,7 @@ pl <- ggplot(data = scaled%>%filter(is_selection==1)) + aes(x = gen, y = mate_va
 pl
 
 ```
+
 ```{r}
 
 dat <-scaled%>%filter(is_selection==1)
@@ -118,6 +174,7 @@ summary(model)
 #also, the relationship probably something more like a saturation curve. It's not going to be a line.
 
 ```
+
 ```{r}
 strat_scaled = mvovergen %>% filter(directory=='strat_0.75_1_All.High_UniformJittered_900_6')
 #this was a real quick example: 2 simulations, 100 gens
@@ -146,9 +203,198 @@ pl
 
 ```{r}
 library(tidyverse)
-conditions <- list.files("../to_store/")[3:6]
+conditions <- list.files("../to_store/")[3:14]
 
 #list.files("../to_run/incomplete_results/")
+```
+
+```{r}
+lookup_table <- data.frame()
+for (my_condition in conditions){
+  # split the string
+  my_split <- strsplit(my_condition, "_")[[1]] #|\\=
+  # extract parameters
+  change_what <- my_split[1]
+  pos_interval <- NA
+  strat_interval <- NA
+  assign(paste0(change_what, "_interval"), as.numeric(my_split[2]))
+  is_scaled <- my_split[3]
+  init_strat <- my_split[4]
+  init_pos <- my_split[5]
+  male_dist <- as.numeric(my_split[6])
+  num_males <- as.numeric(my_split[7])
+  
+
+  lookup_table <- rbind(lookup_table, 
+                        data.frame(directory=my_condition,
+                                   change_what=change_what,
+                                   pos_interval=pos_interval,
+                                   strat_interval=strat_interval,
+                                   is_scaled=is_scaled,
+                                   init_strat=init_strat,
+                                   init_pos=init_pos,
+                                   male_dist=male_dist,
+                                   num_males=num_males))
+}
+```
+
+```{r}
+all_results <- tibble()
+my_dir_results <- "../to_run/29_res/"
+my_results <- list.files("../to_run/29_res/")
+count=1
+for (my_file in my_results) {
+  my_condition <- str_remove(str_remove(str_remove(my_file, "null_.._"), "res_.._"), ".csv")
+  my_rnd_seed <- as.numeric(strsplit(my_file, "_")[[1]][2])
+  tmp <- read_csv(paste0(my_dir_results, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=(count>120))
+  all_results <- rbind(all_results, tmp)
+  count <-count+1
+}
+all_results <- all_results %>% inner_join(lookup_table) 
+#all_results2 <- all_results %>% filter(gen<750) #different lengths, so we're putting them all at the same length
+
+```
+```{r}
+mvovergen <- all_results %>% filter(num_males==6) %>% group_by(rnd_seed,gen,directory, is_selection, is_scaled, male_dist) %>% summarise(mate_var=var(successful_mating))
+```
+
+```{r}
+mod <- lm(mate_var ~ is_selection*is_scaled*male_dist,
+              data = filter(mvovergen, gen==1999))
+summary(mod)
+```
+
+
+```{r}
+mvovergen <- all_results %>% filter(num_males==6) %>% group_by(rnd_seed,gen,directory, is_selection, is_scaled, male_dist) %>% summarise(mate_var=var(successful_mating))
+```
+
+```{r}
+mod <- lm(mate_var ~ is_selection*is_scaled*male_dist,
+              data = filter(mvovergen, gen==1999))
+summary(mod)
+```
+
+
+```{r}
+stratovergen <- all_results %>%
+  group_by(gen, is_selection, male_dist, is_scaled, rnd_seed, num_males) %>%
+  summarise(avg_strat=mean(probability_maraud)) %>%
+  ungroup() %>%
+  group_by(is_selection, male_dist, is_scaled, rnd_seed, num_males) %>%
+  mutate(d_avg_strat=avg_strat-lag(avg_strat)) %>% mutate(l_avg_strat=lag(avg_strat)) %>%
+  ungroup()
+
+#not doing this rn!
+```
+all the variables that might matter (we'll handle combinations thereof in a second):
+-gen
+-is_selection
+-male_dist
+-sim*condition*is_selection (not really sim on it's own tho)
+-lag time variables (figure out how to assess how far back autoregression goes with a test of some sort... the issue is that there are multiple time series)... could the lag variable actually take into account the above bullet point? probably!
+
+Note: is it still not stationary? Prob not
+```{r}
+library(tidyverse) # this loads both dplyr and tidyr, along with other packages
+library(fpp2) # time series forecasting
+library(lubridate)
+library(GGally)
+names <- c() #rep(NA, 2*3*10)
+gen_shifts <- c() #rep(NA, 2*3*10)
+for(is_s in c(TRUE, FALSE)){
+  for(m_d in c(300, 600, 900)){
+    for(is_sc in c(0,1)){
+      temp <- stratovergen %>% filter(is_selection==is_s) %>% filter(male_dist==m_d) %>% filter(is_scaled==is_sc) 
+      temp1 <- temp %>% group_by(gen) %>%  summarise(d_avg_avg_strat=mean(d_avg_strat)) %>% ungroup()
+      cond_ts <- select(temp1, d_avg_avg_strat) 
+      # p <- ggAcf(cond_ts, lag.max = 1999)
+      # print(p)
+      for(rnd in 0:9){
+        temp2 <- temp %>% filter(rnd_seed==rnd)
+        name <- paste0(rnd, "_", is_s, "_", is_sc, "_", m_d)
+        assign(name, select(temp2, d_avg_strat))
+        # p <- ggAcf(get(name)) + ggtitle(name)
+        # print(p)
+        # g <- ccf(na.omit(get(name)), na.omit(cond_ts), lag.max = 100)
+        # print(g)
+        #names=c(names, name)
+        #gen_shifts=c(gen_shifts, sum(g$acf>.05))
+      }
+    }
+  }
+}
+
+
+```
+
+```{r}
+# new <- stratovergen %>% group_by(is_selection, male_dist, rnd_seed)
+# 
+# 
+# new <- new %>% mutate(lags = map(new, function(dat){
+#     
+#     
+# 
+# 
+# df %>% nest(-cats) %>% 
+#     mutate(lags = map(data, function(dat) {
+#         imap_dfc(dat[-1], ~set_names(map(1:2, lag, x = .x), 
+#                                      paste0(.y, '_lag', 1:2)))
+#         })) %>% 
+#     unnest() %>% 
+#     arrange(days)
+
+```
+
+
+```{r}
+library(tseries)
+adf.test(residuals.glm(model2))
+```
+
+
+
+```{r}
+model5 <- glm(avg_strat ~ is_selection+male_dist+is_scaled,
+              data = stratovergen %>% filter(gen==1999 & num_males==6),
+              family = "gaussian")
+summary(model5)
+#different results when you use + vs *!!!!!
+
+
+#removing male_dist lowers AIC (slightly)
+
+#don't get AIC.... hmmm
+```
+```{r}
+newsovg <- stratovergen %>% filter(gen==1999) %>% group_by(is_selection, male_dist, is_scaled) %>% summarise(aa_strat=mean(avg_strat)) %>% ungroup() %>% select(aa_strat, is_selection, male_dist, is_scaled) %>% distinct()
+
+```
+
+```{r}
+model6 <- lm(aa_strat ~ is_selection+male_dist+is_scaled,
+              data = newsovg)
+summary(model6)
+
+#removing male_dist lowers AIC (slightly)
+```
+
+```{r}
+model7 <- lm(aa_strat ~ is_selection, data = newsovg)
+summary(model7)
+
+#AIC is worse (higher)
+#Adj R^2 is best I've found (but idk R^2 for glms)
+```
+
+
+to_run
+```{r}
+library(tidyverse)
+files <- list.files("../to_run/incomplete_results/")
+conditions <- str_remove(str_remove(files[str_detect(files, "res_00_")],  "res_.._"), ".csv")
+
 ```
 
 ```{r}
@@ -194,25 +440,81 @@ for (my_file in my_results) {
   count <-count+1
 }
 all_results <- all_results %>% inner_join(lookup_table) 
-all_results2 <- all_results %>% filter(gen<750) #different lengths, so we're putting them all at the same length
+all_results <- all_results %>% filter(gen<750) #different lengths, so we're putting them all at the same length
 
 ```
-```{r}
-stratovergen <- all_results2 %>% group_by(rnd_seed,gen, male_dist, is_selection) %>% summarise(avg_strat=mean(probability_maraud))
-```
-
 
 ```{r}
-model1 <- glm(avg_strat ~ gen + is_selection + male_dist, # one sex as baseline, the other modifies intercept
-              data = stratovergen,
-              family = "binomial")
-summary(model1)
+mvovergen <- all_results %>% group_by(rnd_seed,gen,directory, is_selection, male_dist) %>% summarise(mate_var=var(successful_mating))
 
+stratovergen <- all_results %>% group_by(rnd_seed,gen,directory, is_selection, male_dist) %>% summarise(avg_strat=mean(probability_maraud))
+```
+
+```{r}
+model <- lm(mate_var ~ is_selection*male_dist,
+              data = mvovergen %>% filter(gen==749))
+summary(model)
+```
+
+```{r}
+model <- lm(avg_strat ~ is_selection*male_dist,
+              data = stratovergen %>% filter(gen==749))
+summary(model)
+```
+
+```{r}
+pl <- ggplot(data = filter(stratovergen, male_dist==300)) + aes(x = gen, y = avg_strat, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2)
+pl
 ```
 ```{r}
-model2 <- glm(avg_strat ~ gen * is_selection * male_dist, 
-              data = stratovergen,
-              family = "binomial")
-summary(model2)
+pl <- ggplot(data = stratovergen) + aes(x = gen, y = avg_strat, color = as.factor(is_selection))  + stat_smooth() + facet_wrap(~male_dist)
+pl
+```
+
+glm binomial won't work!!! assumes it levels off at 1!
+```{r}
+pl <- ggplot(data = stratovergen %>% filter(male_dist==600)) + aes(x = gen, y = avg_strat, color = as.factor(is_selection))  + stat_smooth()
+pl
+```
+
+```{r}
+pl <- ggplot(data = stratovergen %>% filter(male_dist==300)) + aes(x = gen, y = avg_strat, color = as.factor(is_selection))  + stat_smooth() + facet_wrap(~male_dist)
+pl
+```
+
+```{r}
+sog300 <- stratovergen %>% filter(male_dist==300)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.1-1)*scale,scale),data=sog300)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .01
 
 ```
+
+
+```{r}
+library(nlme)
+#the formula for the models
+lF<-formula(avg_strat~K*.01*exp(r*gen)/(K+.01*(exp(r*gen)-1)) | is_selection)
+
+#fit the model
+(m <- nlsList(lF,data=sog300,start=list(K=K_start,r=R_start)))
+```
+
+```{r}
+sog300 <- stratovergen %>% filter(male_dist==300, rnd_seed>=0, rnd_seed<=8)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.1-1)*scale,scale),data=sog300)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .01
+
+#the formula for the models
+lF<-formula(avg_strat~K*.01*exp(r*gen)/(K+.01*(exp(r*gen)-1)) | is_selection)
+
+#fit the model
+(m <- nlsList(lF,data=sog300,start=list(K=K_start,r=R_start)))
+```
+
+
+
+
