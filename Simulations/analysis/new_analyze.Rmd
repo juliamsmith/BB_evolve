@@ -1,0 +1,576 @@
+---
+title: "new_analyze"
+author: "Julia Smith"
+date: "5/6/2020"
+output: html_document
+---
+
+```{r}
+#load packages
+library(nlme)
+library(tidyverse)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+#library(MuMIn) #evil scraping package :0
+#options(na.action=na.fail) 
+```
+
+
+
+Section 1 -- position (IDEAS: the way our model works, females use distnace from past male as a basis for choosing who to visit next, also I might be letting them move too far (.1*circumference)) ONE FIX: make fake mating success in null not truly random but based on simulations with the same positions but no marauding 
+
+Another stray idea (is sd below average the way to go or should the size of a sd be established early on and then stay fixed so that we actually see more fine-tuned changes as (if) mating variance goes down)
+```{r}
+#read in results for pos_0.1_0/1_All.VHigh_EvenTenthClumped_900_6
+
+conditions <- list.files("../to_store/")[1:2]
+
+lookup_table <- data.frame()
+for (my_condition in conditions){
+  # split the string
+  my_split <- strsplit(my_condition, "_")[[1]] #|\\=
+  # extract parameters
+  change_what <- my_split[1]
+  pos_interval <- NA
+  strat_interval <- NA
+  assign(paste0(change_what, "_interval"), as.numeric(my_split[2]))
+  is_scaled <- my_split[3]
+  init_strat <- my_split[4]
+  init_pos <- my_split[5]
+  male_dist <- as.numeric(my_split[6])
+  num_males <- as.numeric(my_split[7])
+  
+
+  lookup_table <- rbind(lookup_table, 
+                        data.frame(directory=my_condition,
+                                   change_what=change_what,
+                                   pos_interval=pos_interval,
+                                   strat_interval=strat_interval,
+                                   is_scaled=is_scaled,
+                                   init_strat=init_strat,
+                                   init_pos=init_pos,
+                                   male_dist=male_dist,
+                                   num_males=num_males))
+}
+
+all_results <- tibble()
+for (my_condition in conditions){
+  # read and load each result
+  my_dir_results <- paste0("../to_store/", my_condition, "/results/")
+ my_results <- list.files(my_dir_results)
+ if (length(my_results) > 0){
+   # process a single file
+   for (my_file in my_results) {
+     my_rnd_seed <- as.numeric(strsplit(my_file, "_")[[1]][2])
+     tmp <- read_csv(paste0(my_dir_results, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=1)
+
+     all_results <- rbind(all_results, tmp)
+   }
+ }
+}
+
+for (my_condition in conditions){
+  # read and load each result
+  my_dir_nulls <- paste0("../to_store/", my_condition, "/nulls/")
+ my_nulls <- list.files(my_dir_nulls)
+ if (length(my_nulls) > 0){
+   # process a single file
+   for (my_file in my_nulls) {
+     my_rnd_seed <- as.numeric(strsplit(my_file, "_")[[1]][2])
+     tmp <- read_csv(paste0(my_dir_nulls, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=0)
+
+     all_results <- rbind(all_results, tmp)
+   }
+ }
+}
+
+all_results <- all_results %>% inner_join(lookup_table)
+```
+
+```{r}
+posvarovergen <- all_results %>% group_by(rnd_seed,gen,directory, is_selection, is_scaled) %>% summarise(mv_after=var(successful_mating), quad1=sum(position>=0 & position< male_dist*num_males/5), quad2 = sum(position>= male_dist*num_males/5 & position< 2*male_dist*num_males/5), quad3= sum(position>= 2*male_dist*num_males/5 & position< 3*male_dist*num_males/5), quad4= sum(position>= 3*male_dist*num_males/5 & position< 4*male_dist*num_males/5), quad5= sum(position>= 4*male_dist*num_males/5 & position< male_dist*num_males)) %>% mutate(vmr=sum((quad1-6/5)^2, (quad2-6/5)^2, (quad3-6/5)^2, (quad4-6/5)^2, (quad5-6/5)^2)/((6/5)*(5-1))) %>% ungroup() %>% mutate(z=sqrt((5-1)/(6/5))*(vmr-1)) %>% group_by(rnd_seed, directory, is_selection, is_scaled) %>% mutate(mv_before=lag(mv_after)) %>% ungroup()
+```
+
+```{r}
+#not using this -- just an illustration
+pl <- ggplot(data = filter(posvarovergen, is_scaled==1, rnd_seed==1, gen<20)) + aes(x = gen, y = vmr, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2)
+pl
+```
+```{r}
+# pvg1999=posvarovergen %>% filter(gen==1999)
+# full.mod <- lm(vmr ~ is_scaled*is_selection*mv_before, data=pvg1999)
+
+#dredge(full.mod, rank="AICc") #it's doing this anyway
+#nope never mind -- that's data dredging!!!
+#options(scipen = 1)
+#options(digits = 2)
+mod <- lm(vmr ~ is_selection+is_scaled, data=posvarovergen %>% filter(gen==1999))
+tab_model(mod, title= "Final position linear regression (set 1)", dv.labels=c("IOD of bowers"), pred.labels = c("(intercept)", "selection", "sd-scaled") )
+summary(mod)
+
+
+```
+
+
+
+```{r}
+mod <- lm(mv_after ~ vmr*is_scaled*is_selection, data=posvarovergen %>% filter(gen==1999))
+tab_model(mod, title= "Final IOD linear regression", dv.labels=c("Mating variance"), pred.labels = c("(intercept)", "sd-scaled", "selection"))
+
+#nothing significant with +
+# vmr*is_scaled*is_selection... vmr, vmr:is_scaled, interactino btwn the three .078
+
+#hmm so this isn't super meaningful... maybe over time would be?
+```
+
+```{r}
+#less good IMO!
+posvarovergen2 <- all_results %>% group_by(rnd_seed,gen,directory, is_selection, is_scaled) %>% summarise(mate_var=var(successful_mating), quad1=sum(position>=0 & position< male_dist*num_males/3), quad2 = sum(position>= male_dist*num_males/3 & position< 2*male_dist*num_males/3), quad3= sum(position>= 2*male_dist*num_males/5 & position< male_dist*num_males)) %>% mutate(vmr=sum((quad1-2)^2, (quad2-2)^2, (quad3-2)^2)/((2)*(3-1))) %>% ungroup() %>% mutate(z=sqrt((3-1)/(2))*(vmr-1))
+
+mod <- lm(vmr ~ is_scaled + is_selection+mate_var, data=posvarovergen2 %>% filter(gen==1999))
+summary(mod)
+#forgot to filter the 1999 -- but this isn't exactly a big deal bc things settle very quickly
+
+```
+
+
+
+
+
+Section 2 -- strategy (all low)
+```{r}
+#read in results for strat_0.75_1_All.Low_Uniform_300/600/900_6
+
+files <- list.files("../to_run/complete_results/")
+conditions <- str_remove(str_remove(files[str_detect(files, "res_00_")],  "res_.._"), ".csv")
+
+
+lookup_table <- data.frame()
+for (my_condition in conditions){
+  # split the string
+  my_split <- strsplit(my_condition, "_")[[1]] #|\\=
+  # extract parameters
+  change_what <- my_split[1]
+  pos_interval <- NA
+  strat_interval <- NA
+  assign(paste0(change_what, "_interval"), as.numeric(my_split[2]))
+  is_scaled <- my_split[3]
+  init_strat <- my_split[4]
+  init_pos <- my_split[5]
+  male_dist <- as.numeric(my_split[6])
+  num_males <- as.numeric(my_split[7])
+  
+
+  lookup_table <- rbind(lookup_table, 
+                        data.frame(directory=my_condition,
+                                   change_what=change_what,
+                                   pos_interval=pos_interval,
+                                   strat_interval=strat_interval,
+                                   is_scaled=is_scaled,
+                                   init_strat=init_strat,
+                                   init_pos=init_pos,
+                                   male_dist=male_dist,
+                                   num_males=num_males))
+}
+
+all_results <- tibble()
+my_dir_results <- "../to_run/complete_results/"
+my_results <- list.files("../to_run/complete_results/")
+count=1
+for (my_file in my_results) {
+  my_condition <- str_remove(str_remove(str_remove(my_file, "null_.._"), "res_.._"), ".csv")
+  my_rnd_seed <- as.numeric(strsplit(my_file, "_")[[1]][2])
+  tmp <- read_csv(paste0(my_dir_results, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=(count>30))
+  all_results <- rbind(all_results, tmp)
+  count <-count+1
+}
+all_results <- all_results %>% inner_join(lookup_table) 
+```
+
+```{r}
+stratlow <- all_results %>% group_by(rnd_seed,gen,directory, is_selection, is_scaled, male_dist) %>% summarise(mv_after=var(successful_mating), avg_strat=mean(probability_maraud)) %>% group_by(rnd_seed, directory, is_selection, male_dist) %>% mutate(mv_before=lag(mv_after)) %>% ungroup()
+```
+
+```{r}
+#avg strat comparison (insignificance holds true for just male_dist=300, also)
+model <- lm(avg_strat ~ is_selection+male_dist, data = stratlow %>% filter(gen==1999))
+tab_model(model, title= "Final strategy linear regression (set 2)", dv.labels=c("average marauding probability"), pred.labels = c("(intercept)", "selection",  "inter-bower distance"))
+summary(model)
+
+#could include before_mv... it would be significant
+
+#the interactions seem to be better for it
+#when I tried just the significant ones I got a lower R^2 and a lower p-value (and is_selection became insignificant)... not sure what to do there
+
+#how about AIC? that's better when I do just those terms
+#and BIC? same
+```
+
+```{r}
+#mating variance comparison
+model <- lm(mv_after ~ is_selection+male_dist+avg_strat,
+              data = stratlow %>% filter(gen==1999))
+tab_model(model)
+summary(model)
+
+#all * .447 R2 BUT nothing significant
+#+ gives .425
+
+#think about it more!
+```
+
+
+
+
+```{r}
+#plot the 3 logistic regression
+
+#the formula for the models
+lF<-formula(avg_strat~K*.01*exp(r*gen)/(K+.01*(exp(r*gen)-1)) | is_selection)
+
+#stratlow <- stratlow %>% select(-mv_before)
+
+sog300 <- stratlow %>% filter(male_dist==300) 
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.01-1)*scale,scale),data=sog300)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .01
+#fit the model
+(m <- nlsList(lF,data=sog300,start=list(K=K_start,r=R_start)))
+sog300 <- sog300 %>% arrange(is_selection, rnd_seed)
+sog300$pred <- predict(m)
+
+
+
+sog600 <- stratlow %>% filter(male_dist==600)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.01-1)*scale,scale),data=sog600)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .01
+#fit the model
+(m <- nlsList(lF,data=sog600,start=list(K=K_start,r=R_start)))
+sog600 <- sog600 %>% arrange(is_selection, rnd_seed)
+sog600$pred <- predict(m)
+
+
+
+sog900 <- stratlow %>% filter(male_dist==900)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.01-1)*scale,scale),data=sog900)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .01
+#fit the model
+(m <- nlsList(lF,data=sog900,start=list(K=K_start,r=R_start)))
+sog900 <- sog900 %>% arrange(is_selection, rnd_seed)
+sog900$pred <- predict(m)
+
+
+sog <- rbind(sog300, sog600, sog900)
+
+# ggplot(sog300,aes(x=gen,y=avg_strat,color=as.factor(is_selection))) + geom_point()+geom_line(aes(y=pred))
+mlabs <- c("300m", "600m", "900m")
+
+pl <- ggplot(data = sog) + aes(x = gen, y = avg_strat, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection))  + geom_line( alpha=.2)  + geom_line(aes(y=pred), size=1) + facet_wrap(~male_dist) + labs(x="Generation", y="Average strategy", title="Strategy evolution varying inter-bower distance (set 2)") +  theme_bw() + theme(legend.position="None") + theme(axis.text.x = element_text(angle = 45, hjust=1))
+pl
+
+```
+
+
+```{r}
+#plot the 3 logistic regression (mating variance)
+
+#the formula for the models
+lF<-formula(mv_after~K*n0*exp(r*gen)/(K+n0*(exp(r*gen)-1)) | is_selection)
+
+#stratlow <- stratlow %>% select(-mv_before)
+
+sog300 <- stratlow %>% filter(male_dist==300) 
+SS<-getInitial(mv_after~SSlogis(gen,alpha,xmid,scale),data=sog300)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<-SS["alpha"]/(exp(SS["xmid"]/SS["scale"])+1)
+#fit the model
+(m <- nlsList(lF,data=sog300,start=list(K=K_start,r=R_start, n0=N0_start)))
+sog300 <- sog300 %>% arrange(is_selection, rnd_seed)
+sog300$pred <- predict(m)
+
+
+
+sog600 <- stratlow %>% filter(male_dist==600) 
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,xmid,scale),data=sog600)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<-SS["alpha"]/(exp(SS["xmid"]/SS["scale"])+1)
+#fit the model
+(m <- nlsList(lF,data=sog600,start=list(K=K_start,r=R_start, n0=N0_start)))
+sog600 <- sog600 %>% arrange(is_selection, rnd_seed)
+sog600$pred <- predict(m)
+
+
+
+sog900 <- stratlow %>% filter(male_dist==900) 
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,xmid,scale),data=sog900)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<-SS["alpha"]/(exp(SS["xmid"]/SS["scale"])+1)
+#fit the model
+(m <- nlsList(lF,data=sog900,start=list(K=K_start,r=R_start, n0=N0_start)))
+sog900 <- sog900 %>% arrange(is_selection, rnd_seed)
+sog900$pred <- predict(m)
+
+
+sog <- rbind(sog300, sog600, sog900)
+
+# ggplot(sog300,aes(x=gen,y=avg_strat,color=as.factor(is_selection))) + geom_point()+geom_line(aes(y=pred))
+mlabs <- c("300m", "600m", "900m")
+
+pl <- ggplot(data = sog) + aes(x = gen, y = mv_after, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection))  + geom_line( alpha=.2)  + geom_line(aes(y=pred), size=1) + facet_wrap(~male_dist) + labs(x="Generation", y="Mating varaince", title="MV evolution varying density") +  theme_bw() + theme(legend.position="None") + theme(axis.text.x = element_text(angle = 45, hjust=1))
+pl
+
+```
+
+
+
+Section 3 -- strategy (alt)
+```{r}
+files <- list.files("../to_run/29_res/")
+conditions <- str_remove(str_remove(files[str_detect(files, "res_00_")],  "res_.._"), ".csv")
+
+lookup_table <- data.frame()
+for (my_condition in conditions){
+  # split the string
+  my_split <- strsplit(my_condition, "_")[[1]] #|\\=
+  # extract parameters
+  change_what <- my_split[1]
+  pos_interval <- NA
+  strat_interval <- NA
+  assign(paste0(change_what, "_interval"), as.numeric(my_split[2]))
+  is_scaled <- my_split[3]
+  init_strat <- my_split[4]
+  init_pos <- my_split[5]
+  male_dist <- as.numeric(my_split[6])
+  num_males <- as.numeric(my_split[7])
+  
+
+  lookup_table <- rbind(lookup_table, 
+                        data.frame(directory=my_condition,
+                                   change_what=change_what,
+                                   pos_interval=pos_interval,
+                                   strat_interval=strat_interval,
+                                   is_scaled=is_scaled,
+                                   init_strat=init_strat,
+                                   init_pos=init_pos,
+                                   male_dist=male_dist,
+                                   num_males=num_males))
+}
+
+all_results <- tibble()
+my_dir_results <- "../to_run/29_res/"
+my_results <- list.files("../to_run/29_res/")
+count=1
+for (my_file in my_results) {
+  my_condition <- str_remove(str_remove(str_remove(my_file, "null_.._"), "res_.._"), ".csv")
+  my_rnd_seed <- as.numeric(strsplit(my_file, "_")[[1]][2])
+  tmp <- read_csv(paste0(my_dir_results, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=(count>60))
+  all_results <- rbind(all_results, tmp)
+  count <-count+1
+}
+all_results <- all_results %>% inner_join(lookup_table)
+
+```
+
+```{r}
+stratalt <- all_results %>% filter(num_males==6) %>% group_by(rnd_seed,gen,directory, is_selection, is_scaled, male_dist) %>% summarise(mv_after=var(successful_mating), avg_strat=mean(probability_maraud)) %>% group_by(rnd_seed,directory, is_selection, is_scaled, male_dist) %>% mutate(mv_before=lag(mv_after)) %>% ungroup()
+```
+
+```{r}
+mod <- lm(avg_strat ~ is_selection+is_scaled+male_dist,
+              data = filter(stratalt, gen==1999))
+tab_model(mod, title= "Final strategy linear regression (set 3)", dv.labels=c("average marauding probability"), pred.labels = c("(intercept)", "selection", "sd-scaled","inter-bower distance"))
+```
+
+```{r}
+mod <- lm(mv_after ~ is_selection+is_scaled+male_dist+avg_strat,
+              data = filter(stratalt, gen==1999))
+#summary(mod)
+tab_model(mod)
+```
+
+
+```{r}
+#plot the logistic regressions
+stratalt <- stratalt %>% select(-mv_before)
+#the formula for the models
+lF<-formula(avg_strat~K*.155*exp(r*gen)/(K+.155*(exp(r*gen)-1)) | is_selection)
+
+sog300_0 <- stratalt %>% filter(male_dist==300, is_scaled==0)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale), data=sog300_0)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog300_0,start=list(K=K_start,r=R_start)))
+sog300_0 <- sog300_0 %>% arrange(is_selection, rnd_seed)
+sog300_0$pred <- predict(m)
+
+
+
+sog600_0 <- stratalt %>% filter(male_dist==600, is_scaled==0)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog600_0)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog600_0,start=list(K=K_start,r=R_start)))
+sog600_0 <- sog600_0 %>% arrange(is_selection, rnd_seed)
+sog600_0$pred <- predict(m)
+
+
+
+sog900_0 <- stratalt %>% filter(male_dist==900, is_scaled==0)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog900_0)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog900_0,start=list(K=K_start,r=R_start)))
+sog900_0 <- sog900_0 %>% arrange(is_selection, rnd_seed)
+sog900_0$pred <- predict(m)
+
+
+
+
+sog300_1 <- stratalt %>% filter(male_dist==300, is_scaled==1)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog300_1)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog300_1,start=list(K=K_start,r=R_start)))
+sog300_1 <- sog300_1 %>% arrange(is_selection, rnd_seed)
+sog300_1$pred <- predict(m)
+
+
+
+sog600_1 <- stratalt %>% filter(male_dist==600, is_scaled==1)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog600_1)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog600_1,start=list(K=K_start,r=R_start)))
+sog600_1 <- sog600_1 %>% arrange(is_selection, rnd_seed)
+sog600_1$pred <- predict(m)
+
+
+
+sog900_1 <- stratalt %>% filter(male_dist==900, is_scaled==1)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog900_1)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog900_1,start=list(K=K_start,r=R_start)))
+sog900_1 <- sog900_1 %>% arrange(is_selection, rnd_seed)
+sog900_1$pred <- predict(m)
+
+
+
+sog <- rbind(sog300_0, sog600_0, sog900_0, sog300_1, sog600_1, sog900_1)
+
+# ggplot(sog300,aes(x=gen,y=avg_strat,color=as.factor(is_selection))) + geom_point()+geom_line(aes(y=pred))
+
+
+pl <- ggplot(data = sog) + aes(x = gen, y = avg_strat, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection))  + geom_line( alpha=.2)  + geom_line(aes(y=pred), size=1) + facet_grid(is_scaled~male_dist) + labs(x="Generation", y="Average strategy", title="Strategy evolution varying inter-bower distance and scaling (set 3)") +  theme_bw() + theme(legend.position="None") + theme(axis.text.x = element_text(angle = 45, hjust=1))
+pl
+
+```
+```{r}
+#plot the logistic regressions
+stratalt <- stratalt %>% select(-mv_before)
+#the formula for the models
+lF<-formula(avg_strat~K*.155*exp(r*gen)/(K+.155*(exp(r*gen)-1)) | is_selection)
+
+sog300_0 <- stratalt %>% filter(male_dist==300, is_scaled==0)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale), data=sog300_0)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog300_0,start=list(K=K_start,r=R_start)))
+sog300_0 <- sog300_0 %>% arrange(is_selection, rnd_seed)
+sog300_0$pred <- predict(m)
+
+
+
+sog600_0 <- stratalt %>% filter(male_dist==600, is_scaled==0)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog600_0)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog600_0,start=list(K=K_start,r=R_start)))
+sog600_0 <- sog600_0 %>% arrange(is_selection, rnd_seed)
+sog600_0$pred <- predict(m)
+
+
+
+sog900_0 <- stratalt %>% filter(male_dist==900, is_scaled==0)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog900_0)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog900_0,start=list(K=K_start,r=R_start)))
+sog900_0 <- sog900_0 %>% arrange(is_selection, rnd_seed)
+sog900_0$pred <- predict(m)
+
+
+
+
+sog300_1 <- stratalt %>% filter(male_dist==300, is_scaled==1)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog300_1)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog300_1,start=list(K=K_start,r=R_start)))
+sog300_1 <- sog300_1 %>% arrange(is_selection, rnd_seed)
+sog300_1$pred <- predict(m)
+
+
+
+sog600_1 <- stratalt %>% filter(male_dist==600, is_scaled==1)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog600_1)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog600_1,start=list(K=K_start,r=R_start)))
+sog600_1 <- sog600_1 %>% arrange(is_selection, rnd_seed)
+sog600_1$pred <- predict(m)
+
+
+
+sog900_1 <- stratalt %>% filter(male_dist==900, is_scaled==1)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.155-1)*scale,scale),data=sog900_1)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .155
+#fit the model
+(m <- nlsList(lF,data=sog900_1,start=list(K=K_start,r=R_start)))
+sog900_1 <- sog900_1 %>% arrange(is_selection, rnd_seed)
+sog900_1$pred <- predict(m)
+
+
+
+sog <- rbind(sog300_0, sog600_0, sog900_0, sog300_1, sog600_1, sog900_1)
+
+# ggplot(sog300,aes(x=gen,y=avg_strat,color=as.factor(is_selection))) + geom_point()+geom_line(aes(y=pred))
+
+
+pl <- ggplot(data = sog) + aes(x = gen, y = avg_strat, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection))  + geom_line( alpha=.2)  + geom_line(aes(y=pred), size=1) + facet_grid(is_scaled~male_dist) + labs(x="Generation", y="Average strategy", title="Strategy evolution varying density and scaling") +  theme_bw() + theme(legend.position="None") + theme(axis.text.x = element_text(angle = 45, hjust=1))
+pl
+
+```

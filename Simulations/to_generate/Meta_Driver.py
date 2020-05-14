@@ -60,16 +60,18 @@ def vary_params(males_vec, dist_mult_vec, male_strat_vec, male_pos_vec, change_w
                                 #set the variable name to interval 
                                 #exec(interval_var_name + " = interval") #assigns the value of interval to the correct variable
 #                                 [in_titles, out_titles, conditions_name] = in_write(males, dist, strat_init, pos_init, sd_adjust, strat_interval, pos_interval, num_sims)  #the call
-                                [in_titles, out_titles, null_out_titles, conditions_name] = in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, sims, num_gens) 
+                                [in_titles, out_titles, null_out_titles, conditions_name] = in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, interval, sims, num_gens)
+                                index=0 
                                 for sim in sims:
-                                    script=writebatchscript(sim, in_titles[sim], out_titles[sim], conditions_name) #WILL EDIT THIS FUNC
+                                    script=writebatchscript(sim, in_titles[index], out_titles[index], conditions_name) #WILL EDIT THIS FUNC
                                     full_name="../to_run/{}.sh".format(str(sim) + '_res_' + conditions_name) #assumes it's in the to_generate file
                                     with open(full_name,"w") as f:
                                         f.write(script) 
-                                    null_script=writenullscript(sim, in_titles[sim], null_out_titles[sim], conditions_name) #WILL EDIT THIS FUNC
+                                    null_script=writenullscript(sim, in_titles[index], null_out_titles[index], conditions_name) #WILL EDIT THIS FUNC
                                     full_name="../to_run/{}.sh".format(str(sim) + '_null_' + conditions_name) #assumes it's in the to_generate file
                                     with open(full_name,"w") as f:
                                         f.write(null_script) 
+                                    index=index+1
 
                 
             

@@ -107,7 +107,7 @@ mutate(distfrom4=abs(position-wrap(position,5))) %>% summarise(var=var(c(distfro
 
 ```{r}
 modpos <- lm(var ~ is_selection+is_scaled,
-              data = filter(posvarovergen, gen==749))
+              data = filter(posvarovergen, gen==1999))
 summary(modpos)
 
 #so it's not driving dispersion (hmmmm)
@@ -203,9 +203,9 @@ pl
 
 ```{r}
 library(tidyverse)
-conditions <- list.files("../to_store/")[3:14]
+files <- list.files("../to_run/complete_results/")
+conditions <- str_remove(str_remove(files[str_detect(files, "res_00_")],  "res_.._"), ".csv")
 
-#list.files("../to_run/incomplete_results/")
 ```
 
 ```{r}
@@ -246,7 +246,7 @@ count=1
 for (my_file in my_results) {
   my_condition <- str_remove(str_remove(str_remove(my_file, "null_.._"), "res_.._"), ".csv")
   my_rnd_seed <- as.numeric(strsplit(my_file, "_")[[1]][2])
-  tmp <- read_csv(paste0(my_dir_results, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=(count>120))
+  tmp <- read_csv(paste0(my_dir_results, my_file), col_types = cols()) %>% add_column(rnd_seed = my_rnd_seed, directory = my_condition, is_selection=(count>60))
   all_results <- rbind(all_results, tmp)
   count <-count+1
 }
@@ -264,7 +264,7 @@ mod <- lm(mate_var ~ is_selection*is_scaled*male_dist,
 summary(mod)
 ```
 
-
+duplicate
 ```{r}
 mvovergen <- all_results %>% filter(num_males==6) %>% group_by(rnd_seed,gen,directory, is_selection, is_scaled, male_dist) %>% summarise(mate_var=var(successful_mating))
 ```
@@ -389,10 +389,10 @@ summary(model7)
 ```
 
 
-to_run
+NEW THING
 ```{r}
 library(tidyverse)
-files <- list.files("../to_run/incomplete_results/")
+files <- list.files("../to_run/complete_results/")
 conditions <- str_remove(str_remove(files[str_detect(files, "res_00_")],  "res_.._"), ".csv")
 
 ```
@@ -429,8 +429,8 @@ for (my_condition in conditions){
 
 ```{r}
 all_results <- tibble()
-my_dir_results <- "../to_run/incomplete_results/"
-my_results <- list.files("../to_run/incomplete_results/")
+my_dir_results <- "../to_run/complete_results/"
+my_results <- list.files("../to_run/complete_results/")
 count=1
 for (my_file in my_results) {
   my_condition <- str_remove(str_remove(str_remove(my_file, "null_.._"), "res_.._"), ".csv")
@@ -440,7 +440,7 @@ for (my_file in my_results) {
   count <-count+1
 }
 all_results <- all_results %>% inner_join(lookup_table) 
-all_results <- all_results %>% filter(gen<750) #different lengths, so we're putting them all at the same length
+#all_results <- all_results %>% filter(gen<750) #different lengths, so we're putting them all at the same length
 
 ```
 
@@ -452,18 +452,24 @@ stratovergen <- all_results %>% group_by(rnd_seed,gen,directory, is_selection, m
 
 ```{r}
 model <- lm(mate_var ~ is_selection*male_dist,
-              data = mvovergen %>% filter(gen==749))
+              data = mvovergen %>% filter(gen==1999))
 summary(model)
 ```
 
 ```{r}
 model <- lm(avg_strat ~ is_selection*male_dist,
-              data = stratovergen %>% filter(gen==749))
+              data = stratovergen %>% filter(gen==1999))
 summary(model)
+```
+```{r}
+model <- lm(avg_strat ~ is_selection,
+              data = stratovergen %>% filter(gen==1999 & male_dist==300))
+summary(model)
+#just with male_dist=300 it still doesn't work!
 ```
 
 ```{r}
-pl <- ggplot(data = filter(stratovergen, male_dist==300)) + aes(x = gen, y = avg_strat, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2)
+pl <- ggplot(data = filter(stratovergen, male_dist==300)) + aes(x = gen, y = avg_strat, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2) + geom_line()
 pl
 ```
 ```{r}
@@ -502,19 +508,65 @@ lF<-formula(avg_strat~K*.01*exp(r*gen)/(K+.01*(exp(r*gen)-1)) | is_selection)
 ```
 
 ```{r}
-sog300 <- stratovergen %>% filter(male_dist==300, rnd_seed>=0, rnd_seed<=8)
+#the formula for the models
+lF<-formula(avg_strat~K*.01*exp(r*gen)/(K+.01*(exp(r*gen)-1)) | is_selection)
+
+sog300 <- stratovergen %>% filter(male_dist==300)
 SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.1-1)*scale,scale),data=sog300)
 K_start<-SS["alpha"]
 R_start<-1/SS["scale"]
 N0_start<- .01
-
-#the formula for the models
-lF<-formula(avg_strat~K*.01*exp(r*gen)/(K+.01*(exp(r*gen)-1)) | is_selection)
-
 #fit the model
 (m <- nlsList(lF,data=sog300,start=list(K=K_start,r=R_start)))
+sog300 <- sog300 %>% arrange(is_selection, rnd_seed)
+sog300$pred <- predict(m)
+
+
+
+sog600 <- stratovergen %>% filter(male_dist==600)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.1-1)*scale,scale),data=sog600)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .01
+#fit the model
+(m <- nlsList(lF,data=sog600,start=list(K=K_start,r=R_start)))
+sog600 <- sog600 %>% arrange(is_selection, rnd_seed)
+sog600$pred <- predict(m)
+
+
+
+sog900 <- stratovergen %>% filter(male_dist==900)
+SS<-getInitial(avg_strat~SSlogis(gen,alpha,log(alpha/.1-1)*scale,scale),data=sog900)
+K_start<-SS["alpha"]
+R_start<-1/SS["scale"]
+N0_start<- .01
+#fit the model
+(m <- nlsList(lF,data=sog900,start=list(K=K_start,r=R_start)))
+sog900 <- sog900 %>% arrange(is_selection, rnd_seed)
+sog900$pred <- predict(m)
+
+
+sog <- rbind(sog300, sog600, sog900)
+
+mlabs <- c("300m", "600m", "900m")
+
+pl <- ggplot(data = sog) + aes(x = gen, y = avg_strat, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection))  + geom_line( alpha=.2)  + geom_line(aes(y=pred), size=1) + facet_wrap(~male_dist) + labs(x="Generation", y="Average strategy", title="Strategy evolution varying density") +  theme_bw() + theme(legend.position="None") + theme(axis.text.x = element_text(angle = 45, hjust=1))
+pl
+
+```
+```{r}
+
+confint(m) #profiling approach... look into it
 ```
 
 
+```{r}
+pl <- ggplot(data = stratovergen %>% filter(male_dist==300)) + aes(x = gen, y = avg_strat, color = as.factor(is_selection)) + geom_point(alpha=.05)
+pl
+```
 
+```{r}
+pl <- ggplot(data = filter(stratovergen, male_dist==300)) + aes(x = gen, y = avg_strat, color = as.factor(is_selection), group=interaction(rnd_seed,is_selection)) + geom_line( alpha=.2) + geom_line(predict(m))
+pl
+```
 

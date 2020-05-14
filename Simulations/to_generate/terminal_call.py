@@ -31,14 +31,14 @@ if __name__ == "__main__":
 #ADJUST    
     
     males_vec = [6]
-    dist_mult_vec = [300, 600, 900]
-    male_strat_vec = ['All.Low']
-    male_pos_vec = ['Uniform']
-    change_what_vec = ['strat']
-    pos_interval_vec = [] #now scaled TO THE SIZE OF THE TOTAL ENVIRONMENT
-    strat_interval_vec = [.75]
-    sd_adjust_vec = [1]
-    sims = range(10)
+    dist_mult_vec = [900]
+    male_strat_vec = ['All.VHigh']
+    male_pos_vec = ['EvenTenthClumped']
+    change_what_vec = ['pos']
+    pos_interval_vec = [.1] #now scaled TO THE SIZE OF THE TOTAL ENVIRONMENT
+    strat_interval_vec = []
+    sd_adjust_vec = [0,1]
+    sims = range(5,10)
     num_gens = 2000
 
 

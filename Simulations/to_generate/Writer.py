@@ -174,10 +174,11 @@ def in_write(males, dist_mult, male_strat, male_pos, sd_adjust, change_what, int
     out_titles=[]
     null_out_titles=[]
     conditions_name = '{}_{}_{}_{}_{}_{}_{}'.format(change_what, interval, sd_adjust, male_strat, male_pos, dist_mult, males)
-    os.makedirs("../to_store/{}".format(conditions_name))
-    os.makedirs("../to_store/{}/parameters".format(conditions_name))
-    os.makedirs("../to_store/{}/results".format(conditions_name))
-    os.makedirs("../to_store/{}/nulls".format(conditions_name))
+    if os.path.exists("../to_store/{}".format(conditions_name))==0:
+        os.makedirs("../to_store/{}".format(conditions_name))
+        os.makedirs("../to_store/{}/parameters".format(conditions_name))
+        os.makedirs("../to_store/{}/results".format(conditions_name))
+        os.makedirs("../to_store/{}/nulls".format(conditions_name))
     for sim in sims:
         correcter=''
         if sim<10:
